@@ -1,0 +1,567 @@
+:root {
+  --border: #d9dee5;
+  --text: #1f2933;
+  --muted: #6b7784;
+  --primary: #2f6fed;
+  --error: #c0392b;
+  --success: #1e7a4d;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f5f7fa;
+  color: var(--text);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 32px 20px 64px;
+}
+
+.nav {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--border);
+}
+
+.nav__link {
+  padding: 10px 18px;
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.nav__link:hover {
+  color: var(--text);
+}
+
+.nav__link--active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs__tab {
+  padding: 10px 18px;
+  color: var(--muted);
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  margin-bottom: -1px;
+}
+
+.tabs__tab:hover {
+  color: var(--text);
+  background: #eef1f6;
+}
+
+.tabs__tab--active {
+  color: var(--primary);
+  background: #fff;
+  border-color: var(--border);
+}
+
+.panel {
+  min-height: 160px;
+}
+
+.panel h2 {
+  margin-top: 0;
+}
+
+.panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.panel__header h2 {
+  margin: 0;
+}
+
+.combobox {
+  display: flex;
+  flex-direction: column;
+  max-width: 420px;
+  margin-bottom: 20px;
+}
+
+.combobox label {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+/* Anchors the dropdown to the input. */
+.combobox__control {
+  position: relative;
+}
+
+.combobox__control input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  background: #fff;
+}
+
+.combobox__control input:focus {
+  outline: 2px solid rgba(47, 111, 237, 0.35);
+  border-color: var(--primary);
+}
+
+.combobox__list {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(31, 41, 51, 0.12);
+}
+
+.combobox__option {
+  padding: 8px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.combobox__option--active {
+  background: #eef3fd;
+}
+
+.combobox__option--add {
+  color: var(--primary);
+  font-weight: 600;
+  border-top: 1px solid var(--border);
+}
+
+.combobox__empty {
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.summary dt {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-top: 14px;
+}
+
+.summary dd {
+  margin: 4px 0 0;
+  font-size: 14px;
+}
+
+.card--narrow {
+  max-width: 480px;
+}
+
+.page__subtitle {
+  margin: 4px 0 0;
+  font-size: 14px;
+}
+
+.field--inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.field--inline label {
+  margin: 0;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.field--inline select {
+  min-width: 280px;
+}
+
+.page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.page__header h1 {
+  margin: 0;
+  font-size: 26px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.button {
+  padding: 9px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.button:hover {
+  border-color: var(--muted);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.button--primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.button--small {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.button--danger {
+  color: var(--error);
+  border-color: #f0c4bf;
+}
+
+.button--danger:hover {
+  background: #fdecea;
+  border-color: var(--error);
+}
+
+/* Destructive inline action, e.g. "Remove" on a bank row. */
+.button--link {
+  border: 0;
+  padding: 0;
+  color: var(--error);
+  background: none;
+  text-decoration: underline;
+}
+
+/* Neutral navigation link. */
+.link {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+}
+
+.card h2 {
+  margin: 0 0 20px;
+  font-size: 20px;
+}
+
+fieldset {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 20px 20px;
+  margin: 0 0 20px;
+}
+
+legend {
+  padding: 0 8px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 4px;
+}
+
+.field label,
+.field__label {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.field__required {
+  color: var(--error);
+}
+
+.field input,
+.field select,
+.field textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  background: #fff;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: 2px solid rgba(47, 111, 237, 0.35);
+  border-color: var(--primary);
+}
+
+.field__error {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--error);
+}
+
+.radio-row {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.radio-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 400;
+  margin: 0;
+}
+
+.bank-account {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.bank-account__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.bank-account__header h3 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.alert {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin: 0 0 20px;
+  font-size: 14px;
+}
+
+.alert ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.alert--error {
+  background: #fdecea;
+  border: 1px solid #f5c6c0;
+  color: var(--error);
+}
+
+.alert--success {
+  background: #e6f4ec;
+  border: 1px solid #b7e0c9;
+  color: var(--success);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.table th,
+.table td {
+  padding: 11px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.table th {
+  background: #f0f3f7;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.table tr:last-child td {
+  border-bottom: 0;
+}
+
+.table__actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+/* Numbers read better right aligned and lined up on the same digit width. */
+.table .numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The grade rows sit inside a form, so they need to be tighter than a page
+   level table. */
+.table--compact {
+  margin-top: 12px;
+}
+
+.table--compact th,
+.table--compact td {
+  padding: 7px 10px;
+}
+
+.table--compact input {
+  width: 100%;
+  max-width: 140px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.table--compact input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.table--compact tfoot td {
+  border-top: 1px solid var(--border);
+  border-bottom: 0;
+  background: #f7f9fc;
+  font-weight: 600;
+}
+
+/* One mark on the sauda form: the mark itself, its lots, and its grade rows. */
+.sauda-mark {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.sauda-mark__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.sauda-mark__header h3 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* Inside a mark the combobox is just another field in the grid. */
+.sauda-mark .combobox {
+  max-width: none;
+  margin-bottom: 0;
+}
+
+.sauda-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.sauda-total__value {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.sauda-total__value strong {
+  font-size: 16px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.field__hint {
+  margin: 5px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* A value the form shows but does not let you edit, e.g. the seller. */
+.field__static {
+  margin: 0;
+  padding: 9px 0;
+  font-weight: 600;
+}

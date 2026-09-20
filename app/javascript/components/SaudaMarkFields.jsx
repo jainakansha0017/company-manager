@@ -1,0 +1,155 @@
+import React from "react";
+import Combobox from "./Combobox";
+
+// "A; B ;;C" -> ["A", "B", "C"]
+export const splitList = (text) =>
+  text
+    .split(";")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+export const kilos = (grade) =>
+  (Number(grade.bags) || 0) * (Number(grade.weight) || 0);
+
+export const formatKg = (value) =>
+  value.toLocaleString("en-IN", { maximumFractionDigits: 3 });
+
+// One mark on the sauda: which mark, its lot numbers, and a row per grade.
+export default function SaudaMarkFields({
+  index,
+  line,
+  marks,
+  marksLoading,
+  onChange,
+  onRemove,
+  onCreateMark,
+  errorFor,
+}) {
+  const update = (patch) => onChange(index, patch);
+
+  // Re-deriving the grade rows keeps whatever bags/weight were already typed
+  // for a grade that is still in the list.
+  const setGradeText = (text) =>
+    update({
+      gradeText: text,
+      grades: splitList(text).map((grade) => {
+        const existing = line.grades.find(
+          (entry) => entry.grade.toLowerCase() === grade.toLowerCase(),
+        );
+        return { grade, bags: existing?.bags ?? "", weight: existing?.weight ?? "" };
+      }),
+    });
+
+  const setGrade = (gradeIndex, field, value) =>
+    update({
+      grades: line.grades.map((grade, i) =>
+        i === gradeIndex ? { ...grade, [field]: value } : grade,
+      ),
+    });
+
+  const subtotal = line.grades.reduce((sum, grade) => sum + kilos(grade), 0);
+
+  return (
+    <div className="sauda-mark">
+      <div className="sauda-mark__header">
+        <h3>Mark {index + 1}</h3>
+        {onRemove && (
+          <button type="button" className="button button--small" onClick={() => onRemove(index)}>
+            Remove mark
+          </button>
+        )}
+      </div>
+
+      <div className="grid">
+        <Combobox
+          label="Mark"
+          options={marks}
+          value={line.markId}
+          loading={marksLoading}
+          onSelect={(mark) => update({ markId: mark ? mark.id : null })}
+          onAddNew={(name) => onCreateMark(index, name)}
+          addNewLabel="Add new mark"
+          placeholder="Type a mark…"
+          emptyMessage="No marks for this seller yet."
+        />
+
+        <div className="field">
+          <label htmlFor={`lot_nos_${index}`}>Lot no.</label>
+          <input
+            id={`lot_nos_${index}`}
+            type="text"
+            value={line.lotNos}
+            placeholder="Separate with ;"
+            onChange={(event) => update({ lotNos: event.target.value })}
+          />
+          <p className="field__hint">Many lots: L-1; L-2; L-3</p>
+        </div>
+
+        <div className="field">
+          <label htmlFor={`grades_${index}`}>Grades</label>
+          <input
+            id={`grades_${index}`}
+            type="text"
+            value={line.gradeText}
+            placeholder="Separate with ;"
+            onChange={(event) => setGradeText(event.target.value)}
+          />
+          <p className="field__hint">Many grades: PD; BOP; FNGS</p>
+        </div>
+      </div>
+
+      {errorFor(`sauda_marks[${index}].mark`) && (
+        <p className="field__error">{errorFor(`sauda_marks[${index}].mark`)}</p>
+      )}
+
+      {line.grades.length === 0 ? (
+        <p className="muted">Type the grades above to enter bags and weight for each.</p>
+      ) : (
+        <table className="table table--compact">
+          <thead>
+            <tr>
+              <th>Grade</th>
+              <th>Bags</th>
+              <th>Weight per bag (kg)</th>
+              <th className="numeric">Kg</th>
+            </tr>
+          </thead>
+          <tbody>
+            {line.grades.map((grade, gradeIndex) => (
+              <tr key={grade.grade}>
+                <td>{grade.grade}</td>
+                <td>
+                  <input
+                    aria-label={`Bags for ${grade.grade}`}
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={grade.bags}
+                    onChange={(event) => setGrade(gradeIndex, "bags", event.target.value)}
+                  />
+                </td>
+                <td>
+                  <input
+                    aria-label={`Weight per bag for ${grade.grade}`}
+                    type="number"
+                    min="0"
+                    step="0.001"
+                    value={grade.weight}
+                    onChange={(event) => setGrade(gradeIndex, "weight", event.target.value)}
+                  />
+                </td>
+                <td className="numeric">{formatKg(kilos(grade))}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={3}>Mark {index + 1} total</td>
+              <td className="numeric">{formatKg(subtotal)} kg</td>
+            </tr>
+          </tfoot>
+        </table>
+      )}
+    </div>
+  );
+}
