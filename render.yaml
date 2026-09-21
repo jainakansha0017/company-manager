@@ -1,0 +1,33 @@
+# Render blueprint. Create the whole stack from this file with
+# Dashboard -> New -> Blueprint, pointed at this repository.
+databases:
+  - name: company-manager-db
+    databaseName: company_manager_production
+    user: company_manager
+    plan: free
+    region: singapore
+
+services:
+  - type: web
+    name: company-manager
+    runtime: ruby
+    plan: free
+    region: singapore
+    buildCommand: ./bin/render-build.sh
+    startCommand: bundle exec puma -C config/puma.rb
+    healthCheckPath: /
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: company-manager-db
+          property: connectionString
+      # Decrypts config/credentials.yml.enc, which is where secret_key_base
+      # lives. Not in this file: paste config/master.key into the dashboard.
+      - key: RAILS_MASTER_KEY
+        sync: false
+      # Without this Puma forks one worker per CPU and the free instance runs
+      # out of memory on boot.
+      - key: WEB_CONCURRENCY
+        value: 2
+      - key: RAILS_ENV
+        value: production
