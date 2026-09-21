@@ -1,12 +1,10 @@
-# Render blueprint. Create the whole stack from this file with
+# Render blueprint. Create the service from this file with
 # Dashboard -> New -> Blueprint, pointed at this repository.
-databases:
-  - name: company-manager-db
-    databaseName: company_manager_production
-    user: company_manager
-    plan: free
-    region: singapore
-
+#
+# The database is deliberately not declared here. Render allows only one free
+# Postgres per workspace and that one is already spoken for, so the database
+# lives on Neon instead and arrives as a DATABASE_URL you paste in. Neon's free
+# tier also has no 30-day expiry, which Render's does.
 services:
   - type: web
     name: company-manager
@@ -17,10 +15,10 @@ services:
     startCommand: bundle exec puma -C config/puma.rb
     healthCheckPath: /
     envVars:
+      # Neon's pooled connection string, copied from its dashboard. Keep the
+      # ?sslmode=require on the end; Neon refuses plaintext connections.
       - key: DATABASE_URL
-        fromDatabase:
-          name: company-manager-db
-          property: connectionString
+        sync: false
       # Decrypts config/credentials.yml.enc, which is where secret_key_base
       # lives. Not in this file: paste config/master.key into the dashboard.
       - key: RAILS_MASTER_KEY
