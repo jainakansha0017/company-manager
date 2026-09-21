@@ -11,7 +11,10 @@
 # It's strongly recommended that you check this file into your version control system.
 
 ActiveRecord::Schema[7.1].define(version: 2026_09_20_192923) do
-  create_table "bank_accounts", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
+  # These are extensions that must be enabled in order to support this database
+  enable_extension "plpgsql"
+
+  create_table "bank_accounts", force: :cascade do |t|
     t.string "bank_name", null: false
     t.string "branch"
     t.string "account_number", null: false
@@ -24,7 +27,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_20_192923) do
     t.index ["accountable_type", "accountable_id"], name: "index_bank_accounts_on_accountable"
   end
 
-  create_table "companies", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
+  create_table "companies", force: :cascade do |t|
     t.string "name", null: false
     t.text "address"
     t.string "email"
@@ -42,7 +45,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_20_192923) do
     t.index ["pan"], name: "index_companies_on_pan", unique: true
   end
 
-  create_table "marks", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
+  create_table "marks", force: :cascade do |t|
     t.bigint "seller_id", null: false
     t.string "name", null: false
     t.datetime "created_at", null: false
@@ -51,7 +54,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_20_192923) do
     t.index ["seller_id"], name: "index_marks_on_seller_id"
   end
 
-  create_table "parties", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
+  create_table "parties", force: :cascade do |t|
     t.string "type", null: false
     t.bigint "company_id", null: false
     t.string "name", null: false
@@ -71,7 +74,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_20_192923) do
     t.index ["company_id"], name: "index_parties_on_company_id"
   end
 
-  create_table "sauda_grades", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
+  create_table "sauda_grades", force: :cascade do |t|
     t.bigint "sauda_mark_id", null: false
     t.string "grade", null: false
     t.integer "bags", null: false
@@ -81,7 +84,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_20_192923) do
     t.index ["sauda_mark_id"], name: "index_sauda_grades_on_sauda_mark_id"
   end
 
-  create_table "sauda_marks", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
+  create_table "sauda_marks", force: :cascade do |t|
     t.bigint "sauda_id", null: false
     t.bigint "mark_id", null: false
     t.string "lot_nos"
@@ -91,7 +94,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_20_192923) do
     t.index ["sauda_id"], name: "index_sauda_marks_on_sauda_id"
   end
 
-  create_table "saudas", charset: "utf8mb4", collation: "utf8mb4_0900_ai_ci", force: :cascade do |t|
+  create_table "saudas", force: :cascade do |t|
     t.bigint "company_id", null: false
     t.bigint "seller_id", null: false
     t.datetime "created_at", null: false
