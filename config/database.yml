@@ -27,8 +27,15 @@ test:
   <<: *default
   database: company_manager_test
 
-# Render (and most hosts) hand you a single connection string. Rails merges
-# DATABASE_URL over whatever is written here, so production needs nothing else.
+# The database lives on Neon, which hands you a single connection string. Fetch
+# it rather than relying on Rails merging DATABASE_URL over the settings above:
+# when it is unset, that merge leaves the defaults in place, those point at a
+# local Unix socket, and the deploy fails with "is the server running locally?"
+# instead of saying which environment variable is missing.
+#
+# The fetch is guarded because Rails renders every environment's block through
+# ERB whatever environment you are in, so an unguarded fetch would stop `rails
+# console` from booting in development too.
 production:
-  <<: *default
-  database: company_manager_production
+  url: <%= Rails.env.production? ? ENV.fetch("DATABASE_URL") : ENV["DATABASE_URL"] %>
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
