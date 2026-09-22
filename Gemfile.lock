@@ -101,8 +101,8 @@ GEM
       dotenv (= 3.2.0)
       railties (>= 6.1)
     drb (2.2.3)
-    erb (4.0.4.1)
-      cgi (>= 0.3.3)
+    erb (2.2.3)
+      cgi
     error_highlight (0.7.0)
     erubi (1.13.1)
     factory_bot (6.6.0)
@@ -221,7 +221,7 @@ GEM
       tsort (>= 0.2)
       zeitwerk (~> 2.6)
     rake (13.4.2)
-    rdoc (7.2.0)
+    rdoc (6.17.0)
       erb
       psych (>= 4.0.0)
       tsort
@@ -285,6 +285,7 @@ DEPENDENCIES
   bootsnap
   debug
   dotenv-rails
+  erb (~> 2.2)
   error_highlight (>= 0.4.0)
   factory_bot_rails
   jsbundling-rails

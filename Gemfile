@@ -21,6 +21,14 @@ gem "jsbundling-rails"
 # passes, which breaks every `render json:` on Rails < 7.2.
 gem "json", "~> 2.7"
 
+# railties pulls in irb, which pulls in rdoc, which pulls in erb. Left alone
+# that resolves to erb 4, which wants cgi >= 0.3.3 — but Ruby 3.1.0 ships cgi
+# 0.3.1 as a default gem, and on a clean install RubyGems activates that one
+# first, so the deploy dies with "Unable to activate erb-4.0.4.1, because
+# cgi-0.3.1 conflicts". Pinning erb to the version Ruby 3.1 ships satisfies
+# rdoc without dragging in a cgi this Ruby cannot provide.
+gem "erb", "~> 2.2"
+
 # Use Redis adapter to run Action Cable in production
 # gem "redis", ">= 4.0.1"
 
