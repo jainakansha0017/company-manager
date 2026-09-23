@@ -185,6 +185,60 @@ RSpec.describe "Api::V1 buyers and sellers" do
     end
   end
 
+  # Brokerage belongs to the seller side of the shared controller.
+  describe "a seller's brokerage basis" do
+    let(:company) { create(:company) }
+
+    it "is stored and returned" do
+      seller = create(:seller, company: company)
+
+      patch "/api/v1/sellers/#{seller.id}",
+            params: { seller: { brokerage_basis: "taxable_value" } }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(json["brokerage_basis"]).to eq("taxable_value")
+      expect(seller.reload.brokerage_basis).to eq("taxable_value")
+    end
+
+    # The form posts the whole record back, banks and all, not just the dropdown.
+    it "is stored when the whole form is sent back" do
+      seller = create(:seller, company: company)
+      account = seller.bank_accounts.first
+
+      patch "/api/v1/sellers/#{seller.id}", params: {
+        seller: {
+          name: seller.name, address: seller.address, email: seller.email,
+          phone_no: seller.phone_no, pan: seller.pan, gst_registered: false, gst_no: "",
+          trade_license_no: "", food_license_no: "", brokerage_basis: "amount",
+          bank_accounts_attributes: [{ id: account.id, bank_name: account.bank_name }],
+          company_id: company.id
+        }
+      }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(seller.reload.brokerage_basis).to eq("amount")
+    end
+
+    it "rejects a figure the sauda does not have" do
+      seller = create(:seller, company: company)
+
+      patch "/api/v1/sellers/#{seller.id}",
+            params: { seller: { brokerage_basis: "gst_amt" } }, as: :json
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json["errors"]).to have_key("brokerage_basis")
+    end
+
+    it "is not offered to buyers" do
+      buyer = create(:buyer, company: company)
+
+      get "/api/v1/buyers", params: { company_id: company.id }
+
+      expect(json.first["id"]).to eq(buyer.id)
+      expect(json.first).not_to have_key("brokerage_basis")
+    end
+  end
+
   it "removes a company's buyers and sellers along with it" do
     company = create(:company)
     create(:buyer, company: company)

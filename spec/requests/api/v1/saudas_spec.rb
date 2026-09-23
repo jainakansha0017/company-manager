@@ -41,8 +41,9 @@ RSpec.describe "Api::V1 saudas" do
 
       expect(json.first.keys).to match_array(
         %w[id company_id seller_id buyer_id buyer_name sauda_no sauda_date bill_date
-           tax_invoice_no destination amount discount_percent
-           total_tax_bill_amt gst_amt disc_amt taxable_value total_kg created_at sauda_marks]
+           tax_invoice_no destination transporter_name bilty_no bilty_date
+           amount discount_percent total_tax_bill_amt gst_amt disc_amt taxable_value
+           brokerage_amt total_kg created_at sauda_marks]
       )
     end
 
@@ -52,8 +53,10 @@ RSpec.describe "Api::V1 saudas" do
       get "/api/v1/saudas", params: { company_id: company.id, seller_id: seller.id }
 
       mark = json.first["sauda_marks"].first
-      expect(mark.keys).to match_array(%w[id mark_id mark_name lot_nos total_kg sauda_grades])
-      expect(mark["sauda_grades"].first.keys).to match_array(%w[id grade bags weight total_kg])
+      expect(mark.keys)
+        .to match_array(%w[id mark_id mark_name lot_nos total_bags total_kg amount sauda_grades])
+      expect(mark["sauda_grades"].first.keys)
+        .to match_array(%w[id grade bags weight rate total_kg amount])
     end
   end
 
@@ -71,15 +74,18 @@ RSpec.describe "Api::V1 saudas" do
           bill_date: "2026-09-23",
           tax_invoice_no: "TI-2026-118",
           destination: "Siliguri",
-          amount: "100000.00",
+          transporter_name: "Sri Ganesh Roadways",
+          bilty_no: "BL-9921",
+          bilty_date: "2026-09-24",
           discount_percent: "2.5",
           sauda_marks_attributes: [
             {
               mark_id: mark.id,
               lot_nos: "L-1; L-2",
+              # 255 kg @ 200 + 200 kg @ 245 = 100,000.
               sauda_grades_attributes: [
-                { grade: "PD", bags: 10, weight: "25.5" },
-                { grade: "BOP", bags: 4, weight: "50.0" }
+                { grade: "PD", bags: 10, weight: "25.5", rate: "200.00" },
+                { grade: "BOP", bags: 4, weight: "50.0", rate: "245.00" }
               ]
             }
           ]
@@ -98,6 +104,28 @@ RSpec.describe "Api::V1 saudas" do
       expect(json["buyer_name"]).to eq(buyer.name)
     end
 
+    it "records how the goods travelled" do
+      post "/api/v1/saudas", params: valid_params
+
+      expect(json["transporter_name"]).to eq("Sri Ganesh Roadways")
+      expect(json["bilty_no"]).to eq("BL-9921")
+      expect(json["bilty_date"]).to eq("2026-09-24")
+    end
+
+    it "counts the bags on each mark" do
+      post "/api/v1/saudas", params: valid_params
+
+      expect(json["sauda_marks"].first["total_bags"]).to eq(14)
+    end
+
+    it "pays the broker one per cent of the figure the seller agreed on" do
+      seller.update!(brokerage_basis: "taxable_value")
+
+      post "/api/v1/saudas", params: valid_params
+
+      expect(json["brokerage_amt"].to_f).to eq(975.0)
+    end
+
     # bags x weight per bag, added up across every grade of every mark.
     it "works out the total kilos" do
       post "/api/v1/saudas", params: valid_params
@@ -105,9 +133,12 @@ RSpec.describe "Api::V1 saudas" do
       expect(json["total_kg"].to_f).to eq(455.0)
     end
 
-    it "works out the bill from the amount and the discount" do
+    it "prices the grades and works the bill out from there" do
       post "/api/v1/saudas", params: valid_params
 
+      expect(json["amount"].to_f).to eq(100_000.0)
+      expect(json["sauda_marks"].first["amount"].to_f).to eq(100_000.0)
+      expect(json["sauda_marks"].first["sauda_grades"].first["amount"].to_f).to eq(51_000.0)
       expect(json["disc_amt"].to_f).to eq(2_500.0)
       expect(json["taxable_value"].to_f).to eq(97_500.0)
       expect(json["gst_amt"].to_f).to eq(4_875.0)
@@ -115,15 +146,16 @@ RSpec.describe "Api::V1 saudas" do
     end
 
     # The worked-out figures are not permitted parameters, so a caller cannot
-    # post a bill that disagrees with the amount it claims to come from.
+    # post a bill that disagrees with the kilos and rates it claims to come from.
     it "ignores worked-out amounts sent by the caller" do
       params = valid_params.deep_merge(
-        sauda: { disc_amt: "0.00", gst_amt: "1.00", taxable_value: "1.00",
+        sauda: { amount: "1.00", disc_amt: "0.00", gst_amt: "1.00", taxable_value: "1.00",
                  total_tax_bill_amt: "1.00" }
       )
 
       post "/api/v1/saudas", params: params
 
+      expect(json["amount"].to_f).to eq(100_000.0)
       expect(json["disc_amt"].to_f).to eq(2_500.0)
       expect(json["total_tax_bill_amt"].to_f).to eq(102_375.0)
     end

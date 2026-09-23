@@ -63,4 +63,22 @@ RSpec.describe Party do
       expect(seller).to be_valid
     end
   end
+
+  describe "a seller's brokerage basis" do
+    it "accepts either of the sauda figures the broker can be paid on" do
+      expect(build(:seller, brokerage_basis: "amount")).to be_valid
+      expect(build(:seller, brokerage_basis: "taxable_value")).to be_valid
+    end
+
+    it "rejects any other figure" do
+      seller = build(:seller, brokerage_basis: "gst_amt")
+
+      expect(seller).not_to be_valid
+      expect(seller.errors[:brokerage_basis]).to be_present
+    end
+
+    it "reads an unset dropdown as no brokerage at all" do
+      expect(create(:seller, brokerage_basis: "").brokerage_basis).to be_nil
+    end
+  end
 end

@@ -47,6 +47,23 @@ RSpec.describe SaudaMark do
     end
   end
 
+  describe "#total_bags" do
+    it "adds up the bags over its grades" do
+      sauda_mark = build(:sauda_mark, grade_count: 0)
+      sauda_mark.sauda_grades << build(:sauda_grade, sauda_mark: sauda_mark, bags: 10)
+      sauda_mark.sauda_grades << build(:sauda_grade, sauda_mark: sauda_mark, bags: 4)
+
+      expect(sauda_mark.total_bags).to eq(14)
+    end
+
+    it "ignores grades on their way out" do
+      sauda_mark = create(:sauda_mark, grade_count: 2)
+      sauda_mark.sauda_grades.first.mark_for_destruction
+
+      expect(sauda_mark.total_bags).to eq(10)
+    end
+  end
+
   describe "#total_kg" do
     it "adds up bags x weight per bag over its grades" do
       sauda_mark = build(:sauda_mark, grade_count: 0)
@@ -54,6 +71,20 @@ RSpec.describe SaudaMark do
       sauda_mark.sauda_grades << build(:sauda_grade, sauda_mark: sauda_mark, bags: 2, weight: 10)
 
       expect(sauda_mark.total_kg).to eq(275)
+    end
+  end
+
+  describe "#amount" do
+    it "adds up what its priced grades come to" do
+      sauda_mark = build(:sauda_mark, grade_count: 0)
+      sauda_mark.sauda_grades << build(:sauda_grade, sauda_mark: sauda_mark, bags: 10, weight: 25.5, rate: 2)
+      sauda_mark.sauda_grades << build(:sauda_grade, sauda_mark: sauda_mark, bags: 2, weight: 10, rate: 1.5)
+
+      expect(sauda_mark.amount).to eq(540)
+    end
+
+    it "is nothing at all when none of its grades carry a rate" do
+      expect(build(:sauda_mark).amount).to be_nil
     end
   end
 end

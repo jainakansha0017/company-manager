@@ -28,16 +28,28 @@ const BASE_FIELDS = {
 const toFormValues = (record, blank) =>
   Object.fromEntries(Object.keys(blank).map((key) => [key, record[key] ?? blank[key]]));
 
+// A seller's broker takes a percentage, but of which figure on the sauda is
+// agreed with the seller rather than fixed.
+const BROKERAGE_BASES = [
+  { value: "amount", label: "Amount" },
+  { value: "taxable_value", label: "Taxable value" },
+];
+
 export default function EntityForm({
   heading,
   entity,
   prefill,
   includeFinancialYear = false,
+  includeBrokerage = false,
   onSubmit,
   onSaved,
   onCancel,
 }) {
-  const blank = includeFinancialYear ? { ...BASE_FIELDS, financial_year: "" } : BASE_FIELDS;
+  const blank = {
+    ...BASE_FIELDS,
+    ...(includeFinancialYear ? { financial_year: "" } : {}),
+    ...(includeBrokerage ? { brokerage_basis: "" } : {}),
+  };
   const isEditing = Boolean(entity);
 
   // `prefill` seeds a new record (e.g. the name typed into a combobox) without
@@ -144,6 +156,28 @@ export default function EntityForm({
               required: true,
               placeholder: "2025-26",
             })}
+
+          {includeBrokerage && (
+            <div className="field">
+              <label htmlFor="brokerage_basis">Brokerage/commission calculation</label>
+              <select
+                id="brokerage_basis"
+                value={values.brokerage_basis}
+                onChange={setField("brokerage_basis")}
+              >
+                <option value="">Not applicable</option>
+                {BROKERAGE_BASES.map((basis) => (
+                  <option key={basis.value} value={basis.value}>
+                    {basis.label}
+                  </option>
+                ))}
+              </select>
+              <p className="field__hint">Brokerage is 1% of this figure on each sauda.</p>
+              {errorFor("brokerage_basis") && (
+                <p className="field__error">{errorFor("brokerage_basis")}</p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="field">
@@ -237,6 +271,7 @@ const LABELS = {
   ifsc_code: "IFSC code",
   phone_no: "Phone no.",
   bank_accounts: "Bank accounts",
+  brokerage_basis: "Brokerage/commission calculation",
 };
 
 const label = (attribute) =>

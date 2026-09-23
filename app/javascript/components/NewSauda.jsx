@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { createMark, createSauda, listMarks, listParties } from "../lib/api";
 import Combobox from "./Combobox";
-import SaudaMarkFields, { formatKg, kilos } from "./SaudaMarkFields";
+import SaudaMarkFields, { formatKg, formatMoney, gradeAmount, kilos } from "./SaudaMarkFields";
 
 const today = () => {
   const now = new Date();
@@ -16,30 +16,49 @@ const blankValues = () => ({
   bill_date: "",
   tax_invoice_no: "",
   destination: "",
+  transporter_name: "",
+  bilty_no: "",
+  bilty_date: "",
   buyer_id: null,
-  amount: "",
   discount_percent: "",
 });
 
 // Mirrors Sauda#set_amounts. The server is what actually stores these, so the
 // rounding has to match step for step or the figures shift on save.
 const GST_RATE = 0.05;
+const BROKERAGE_RATE = 0.01;
+
+// Which figure the broker's cut is taken from is the seller's own arrangement.
+const BROKERAGE_BASES = {
+  amount: { label: "amount", of: (derived) => derived.amount },
+  taxable_value: { label: "taxable value", of: (derived) => derived.taxableValue },
+};
 
 const round2 = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
 
-const deriveAmounts = ({ amount, discount_percent: discountPercent }) => {
-  const base = Number(amount);
-  if (amount === "" || Number.isNaN(base)) return null;
+// The amount is the priced grades added up, not something anyone types.
+const priceLines = (lines) => {
+  const priced = lines.flatMap((line) => line.grades.map(gradeAmount)).filter((v) => v !== null);
 
-  const discAmt = round2((base * (Number(discountPercent) || 0)) / 100);
-  const taxableValue = round2(base - discAmt);
-  const gstAmt = round2(taxableValue * GST_RATE);
-
-  return { discAmt, taxableValue, gstAmt, totalTaxBillAmt: round2(taxableValue + gstAmt) };
+  return priced.length ? priced.reduce((sum, value) => sum + value, 0) : null;
 };
 
-const formatMoney = (value) =>
-  value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const deriveAmounts = (lines, discountPercent) => {
+  const amount = priceLines(lines);
+  if (amount === null) return null;
+
+  const discAmt = round2((amount * (Number(discountPercent) || 0)) / 100);
+  const taxableValue = round2(amount - discAmt);
+  const gstAmt = round2(taxableValue * GST_RATE);
+
+  return {
+    amount,
+    discAmt,
+    taxableValue,
+    gstAmt,
+    totalTaxBillAmt: round2(taxableValue + gstAmt),
+  };
+};
 
 // Adding a buyer means leaving this page, so the half-filled sauda is parked
 // in sessionStorage and picked up again on the way back.
@@ -47,8 +66,9 @@ const draftKey = (companyId, sellerId) => `sauda-draft:${companyId}:${sellerId}`
 
 const takeDraft = (companyId, sellerId) => {
   try {
-    const raw = sessionStorage.getItem(draftKey(companyId, sellerId));
-    sessionStorage.removeItem(draftKey(companyId, sellerId));
+    const key = draftKey(companyId, sellerId);
+    const raw = sessionStorage.getItem(key);
+    sessionStorage.removeItem(key);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -62,7 +82,10 @@ export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [marksLoading, setMarksLoading] = useState(true);
 
-  const draft = React.useMemo(() => takeDraft(companyId, sellerId), [companyId, sellerId]);
+  const draft = React.useMemo(
+    () => takeDraft(companyId, sellerId),
+    [companyId, sellerId],
+  );
 
   const [values, setValues] = useState(() => ({
     ...blankValues(),
@@ -163,21 +186,24 @@ export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
     setSubmitting(true);
     setErrors({});
 
-    try {
-      await createSauda({
-        ...values,
-        company_id: Number(companyId),
-        seller_id: Number(sellerId),
-        sauda_marks_attributes: lines.map((line) => ({
-          mark_id: line.markId,
-          lot_nos: line.lotNos,
-          sauda_grades_attributes: line.grades.map((grade) => ({
-            grade: grade.grade,
-            bags: grade.bags,
-            weight: grade.weight,
-          })),
+    const payload = {
+      ...values,
+      company_id: Number(companyId),
+      seller_id: Number(sellerId),
+      sauda_marks_attributes: lines.map((line) => ({
+        mark_id: line.markId,
+        lot_nos: line.lotNos,
+        sauda_grades_attributes: line.grades.map((grade) => ({
+          grade: grade.grade,
+          bags: grade.bags,
+          weight: grade.weight,
+          rate: grade.rate,
         })),
-      });
+      })),
+    };
+
+    try {
+      await createSauda(payload);
 
       onNavigate(`${backToRegister}&saved=1`);
     } catch (error) {
@@ -188,7 +214,8 @@ export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
 
   const errorFor = (key) => errors[key]?.[0];
 
-  const derived = deriveAmounts(values);
+  const derived = deriveAmounts(lines, values.discount_percent);
+  const brokerageBasis = BROKERAGE_BASES[seller?.brokerage_basis];
 
   if (loading) return <p className="muted">Loading…</p>;
 
@@ -284,16 +311,6 @@ export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
             />
           </div>
 
-          <div className="field">
-            <label htmlFor="destination">Destination</label>
-            <input
-              id="destination"
-              type="text"
-              value={values.destination}
-              onChange={setField("destination")}
-            />
-          </div>
-
           <Combobox
             label="Buyer"
             options={buyers}
@@ -306,6 +323,53 @@ export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
             placeholder="Type a buyer name…"
             emptyMessage="No buyers for this company yet."
           />
+
+          <div className="field">
+            <label htmlFor="destination">Destination</label>
+            <input
+              id="destination"
+              type="text"
+              value={values.destination}
+              onChange={setField("destination")}
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="transporter_name">Transporter name</label>
+            <input
+              id="transporter_name"
+              type="text"
+              value={values.transporter_name}
+              onChange={setField("transporter_name")}
+            />
+            {errorFor("transporter_name") && (
+              <p className="field__error">{errorFor("transporter_name")}</p>
+            )}
+          </div>
+
+          <div className="field">
+            <label htmlFor="bilty_no">Bilty no.</label>
+            <input
+              id="bilty_no"
+              type="text"
+              value={values.bilty_no}
+              onChange={setField("bilty_no")}
+            />
+            {errorFor("bilty_no") && <p className="field__error">{errorFor("bilty_no")}</p>}
+          </div>
+
+          <div className="field">
+            <label htmlFor="bilty_date">Bilty date</label>
+            <input
+              id="bilty_date"
+              type="date"
+              value={values.bilty_date}
+              onChange={setField("bilty_date")}
+            />
+            {errorFor("bilty_date") && <p className="field__error">{errorFor("bilty_date")}</p>}
+          </div>
+
+          
         </div>
         {errorFor("buyer") && <p className="field__error">{errorFor("buyer")}</p>}
       </fieldset>
@@ -341,19 +405,6 @@ export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
         <legend>Amounts</legend>
         <div className="grid">
           <div className="field">
-            <label htmlFor="amount">Amount</label>
-            <input
-              id="amount"
-              type="number"
-              min="0"
-              step="0.01"
-              value={values.amount}
-              onChange={setField("amount")}
-            />
-            {errorFor("amount") && <p className="field__error">{errorFor("amount")}</p>}
-          </div>
-
-          <div className="field">
             <label htmlFor="discount_percent">Discount %</label>
             <input
               id="discount_percent"
@@ -373,6 +424,10 @@ export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
         {derived ? (
           <dl className="derived">
             <div className="derived__row">
+              <dt>Amount</dt>
+              <dd>{formatMoney(derived.amount)}</dd>
+            </div>
+            <div className="derived__row">
               <dt>Disc. amt.</dt>
               <dd>{formatMoney(derived.discAmt)}</dd>
             </div>
@@ -388,10 +443,17 @@ export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
               <dt>Total tax bill amt.</dt>
               <dd>{formatMoney(derived.totalTaxBillAmt)}</dd>
             </div>
+            {brokerageBasis && (
+              <div className="derived__row">
+                <dt>Brokerage (1% of {brokerageBasis.label})</dt>
+                <dd>{formatMoney(round2(brokerageBasis.of(derived) * BROKERAGE_RATE))}</dd>
+              </div>
+            )}
           </dl>
         ) : (
           <p className="muted">
-            Enter an amount and the discount, GST and bill total work themselves out.
+            Rate the grades above and the amount, discount, GST and bill total work
+            themselves out.
           </p>
         )}
       </fieldset>

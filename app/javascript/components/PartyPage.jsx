@@ -164,6 +164,7 @@ export default function PartyPage({
             }
             entity={editing === "new" ? null : editing}
             prefill={editing === "new" && prefillName ? { name: prefillName } : null}
+            includeBrokerage={role === "seller"}
             onSubmit={handleSubmit}
             onSaved={handleSaved}
             onCancel={() => (returnTo ? onNavigate(returnTo) : setEditing(null))}

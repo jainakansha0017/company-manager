@@ -312,6 +312,9 @@ fieldset {
   border-radius: 8px;
   padding: 16px 20px 20px;
   margin: 0 0 20px;
+  /* A fieldset defaults to min-content width, which would let the grade table
+     inside it widen the whole page instead of scrolling within itself. */
+  min-inline-size: 0;
 }
 
 legend {
@@ -440,6 +443,12 @@ legend {
 
 .table-scroll .table {
   min-width: 760px;
+}
+
+/* The grade rows carry six columns of their own, which is more than a narrow
+   window can give them without squeezing the inputs down to a digit or two. */
+.table-scroll .table--compact {
+  min-width: 620px;
 }
 
 .table {

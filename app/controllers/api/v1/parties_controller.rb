@@ -48,6 +48,11 @@ module Api
         raise NotImplementedError
       end
 
+      # Fields only one of the two roles carries.
+      def role_attributes
+        []
+      end
+
       def set_party
         @party = party_class.find(params[:id])
       rescue ActiveRecord::RecordNotFound
@@ -57,7 +62,7 @@ module Api
       def party_params
         params.require(party_key).permit(
           :company_id, :name, :address, :email, :phone_no, :pan, :gst_registered,
-          :gst_no, :trade_license_no, :food_license_no,
+          :gst_no, :trade_license_no, :food_license_no, *role_attributes,
           bank_accounts_attributes: %i[id bank_name branch account_number ifsc_code account_type _destroy]
         )
       end
@@ -69,7 +74,7 @@ module Api
       def serialize(party)
         party.as_json(
           only: %i[id company_id name address email phone_no pan gst_registered gst_no
-                   trade_license_no food_license_no created_at],
+                   trade_license_no food_license_no created_at] + role_attributes,
           include: {
             bank_accounts: {
               only: %i[id bank_name branch account_number ifsc_code account_type]

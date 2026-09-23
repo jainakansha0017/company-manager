@@ -8,11 +8,23 @@ export const splitList = (text) =>
     .map((entry) => entry.trim())
     .filter(Boolean);
 
-export const kilos = (grade) =>
-  (Number(grade.bags) || 0) * (Number(grade.weight) || 0);
+export const bags = (grade) => Number(grade.bags) || 0;
+
+export const kilos = (grade) => bags(grade) * (Number(grade.weight) || 0);
+
+// What a grade comes to: its kilos at its rate per kilo. Null when unpriced, so
+// an unpriced grade reads as a dash rather than as nothing owed.
+export const gradeAmount = (grade) => {
+  if (grade.rate === "" || grade.rate == null) return null;
+
+  return Math.round((kilos(grade) * Number(grade.rate) + Number.EPSILON) * 100) / 100;
+};
 
 export const formatKg = (value) =>
   value.toLocaleString("en-IN", { maximumFractionDigits: 3 });
+
+export const formatMoney = (value) =>
+  value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 // One mark on the sauda: which mark, its lot numbers, and a row per grade.
 export default function SaudaMarkFields({
@@ -36,7 +48,12 @@ export default function SaudaMarkFields({
         const existing = line.grades.find(
           (entry) => entry.grade.toLowerCase() === grade.toLowerCase(),
         );
-        return { grade, bags: existing?.bags ?? "", weight: existing?.weight ?? "" };
+        return {
+          grade,
+          bags: existing?.bags ?? "",
+          weight: existing?.weight ?? "",
+          rate: existing?.rate ?? "",
+        };
       }),
     });
 
@@ -47,7 +64,13 @@ export default function SaudaMarkFields({
       ),
     });
 
+  const subtotalBags = line.grades.reduce((sum, grade) => sum + bags(grade), 0);
   const subtotal = line.grades.reduce((sum, grade) => sum + kilos(grade), 0);
+
+  const pricedAmounts = line.grades.map(gradeAmount).filter((value) => value !== null);
+  const subtotalAmount = pricedAmounts.length
+    ? pricedAmounts.reduce((sum, value) => sum + value, 0)
+    : null;
 
   return (
     <div className="sauda-mark">
@@ -105,50 +128,73 @@ export default function SaudaMarkFields({
       {line.grades.length === 0 ? (
         <p className="muted">Type the grades above to enter bags and weight for each.</p>
       ) : (
-        <table className="table table--compact">
-          <thead>
-            <tr>
-              <th>Grade</th>
-              <th>Bags</th>
-              <th>Weight per bag (kg)</th>
-              <th className="numeric">Kg</th>
-            </tr>
-          </thead>
-          <tbody>
-            {line.grades.map((grade, gradeIndex) => (
-              <tr key={grade.grade}>
-                <td>{grade.grade}</td>
-                <td>
-                  <input
-                    aria-label={`Bags for ${grade.grade}`}
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={grade.bags}
-                    onChange={(event) => setGrade(gradeIndex, "bags", event.target.value)}
-                  />
-                </td>
-                <td>
-                  <input
-                    aria-label={`Weight per bag for ${grade.grade}`}
-                    type="number"
-                    min="0"
-                    step="0.001"
-                    value={grade.weight}
-                    onChange={(event) => setGrade(gradeIndex, "weight", event.target.value)}
-                  />
-                </td>
-                <td className="numeric">{formatKg(kilos(grade))}</td>
+        <div className="table-scroll">
+          <table className="table table--compact">
+            <thead>
+              <tr>
+                <th>Grade</th>
+                <th>Bags</th>
+                <th>Weight per bag (kg)</th>
+                <th className="numeric">Kg</th>
+                <th>Rate per kg</th>
+                <th className="numeric">Amount</th>
               </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan={3}>Mark {index + 1} total</td>
-              <td className="numeric">{formatKg(subtotal)} kg</td>
-            </tr>
-          </tfoot>
-        </table>
+            </thead>
+            <tbody>
+              {line.grades.map((grade, gradeIndex) => (
+                <tr key={grade.grade}>
+                  <td>{grade.grade}</td>
+                  <td>
+                    <input
+                      aria-label={`Bags for ${grade.grade}`}
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={grade.bags}
+                      onChange={(event) => setGrade(gradeIndex, "bags", event.target.value)}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      aria-label={`Weight per bag for ${grade.grade}`}
+                      type="number"
+                      min="0"
+                      step="0.001"
+                      value={grade.weight}
+                      onChange={(event) => setGrade(gradeIndex, "weight", event.target.value)}
+                    />
+                  </td>
+                  <td className="numeric">{formatKg(kilos(grade))}</td>
+                  <td>
+                    <input
+                      aria-label={`Rate per kg for ${grade.grade}`}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={grade.rate ?? ""}
+                      onChange={(event) => setGrade(gradeIndex, "rate", event.target.value)}
+                    />
+                  </td>
+                  <td className="numeric">
+                    {gradeAmount(grade) === null ? "—" : formatMoney(gradeAmount(grade))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td>Mark {index + 1} total</td>
+                <td>{subtotalBags} bags</td>
+                <td />
+                <td className="numeric">{formatKg(subtotal)} kg</td>
+                <td />
+                <td className="numeric">
+                  {subtotalAmount === null ? "—" : formatMoney(subtotalAmount)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       )}
     </div>
   );

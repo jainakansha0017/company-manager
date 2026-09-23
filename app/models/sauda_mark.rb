@@ -18,8 +18,20 @@ class SaudaMark < ApplicationRecord
     lot_nos.to_s.split(";").map(&:strip).reject(&:blank?)
   end
 
+  def total_bags
+    live_grades.sum { |grade| grade.bags.to_i }
+  end
+
   def total_kg
     live_grades.sum(&:total_kg)
+  end
+
+  # What this mark comes to, counting only the grades that carry a rate. Nil
+  # when none of them do, so an unpriced mark adds nothing to the sauda.
+  def amount
+    priced = live_grades.filter_map(&:amount)
+
+    priced.sum if priced.any?
   end
 
   private

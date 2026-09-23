@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_22_051500) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_23_140100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -68,6 +68,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_22_051500) do
     t.string "food_license_no"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "brokerage_basis"
     t.index ["company_id", "type", "gst_no"], name: "index_parties_on_company_type_gst_no", unique: true
     t.index ["company_id", "type", "name"], name: "index_parties_on_company_id_and_type_and_name"
     t.index ["company_id", "type", "pan"], name: "index_parties_on_company_type_pan", unique: true
@@ -81,6 +82,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_22_051500) do
     t.decimal "weight", precision: 10, scale: 3, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.decimal "rate", precision: 10, scale: 2
     t.index ["sauda_mark_id"], name: "index_sauda_grades_on_sauda_mark_id"
   end
 
@@ -112,6 +114,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_22_051500) do
     t.date "bill_date"
     t.decimal "amount", precision: 12, scale: 2
     t.decimal "discount_percent", precision: 5, scale: 2
+    t.string "transporter_name"
+    t.string "bilty_no"
+    t.date "bilty_date"
+    t.decimal "brokerage_amt", precision: 12, scale: 2
     t.index ["buyer_id"], name: "index_saudas_on_buyer_id"
     t.index ["company_id", "sauda_date"], name: "index_saudas_on_company_id_and_sauda_date"
     t.index ["company_id", "sauda_no"], name: "index_saudas_on_company_id_and_sauda_no"
