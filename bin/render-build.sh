@@ -19,3 +19,10 @@ bundle exec rails assets:precompile
 bundle exec rails assets:clean
 
 bundle exec rails db:migrate
+
+# There is no sign-up, so the first user has to be made here or there is no way
+# into the deployed app. The seed does nothing unless ADMIN_EMAIL and
+# ADMIN_PASSWORD are set in the dashboard, and resets the password rather than
+# failing if the user already exists — which is also the way back in if it is
+# ever forgotten.
+bundle exec rails db:seed

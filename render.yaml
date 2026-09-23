@@ -29,3 +29,10 @@ services:
         value: 2
       - key: RAILS_ENV
         value: production
+      # The sign-in the app is seeded with. There is no sign-up route, so
+      # without these there is no way into a fresh deploy. Set them in the
+      # dashboard rather than here: this repository is public.
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
