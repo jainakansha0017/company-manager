@@ -432,6 +432,16 @@ legend {
   color: var(--success);
 }
 
+/* The register is wide enough to overflow a narrow window. Scroll the table
+   rather than the page, so the rest of the layout stays put. */
+.table-scroll {
+  overflow-x: auto;
+}
+
+.table-scroll .table {
+  min-width: 760px;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -564,4 +574,43 @@ legend {
   margin: 0;
   padding: 9px 0;
   font-weight: 600;
+}
+
+/* The worked-out half of the amounts section: a bill read top to bottom. */
+.derived {
+  margin: 16px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted, #f8f9fb);
+  max-width: 420px;
+}
+
+.derived__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 5px 0;
+}
+
+.derived__row dt {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.derived__row dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.derived__row--total {
+  margin-top: 5px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.derived__row--total dt {
+  color: var(--text);
 }

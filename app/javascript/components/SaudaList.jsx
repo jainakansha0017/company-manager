@@ -11,6 +11,9 @@ const formatDate = (value) => {
   });
 };
 
+const formatMoney = (value) =>
+  value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 const markSummary = (sauda) =>
   sauda.sauda_marks.map((entry) => entry.mark_name).join(", ") || "—";
 
@@ -26,29 +29,39 @@ export default function SaudaList({ saudas, loading, sellerName }) {
   }
 
   return (
-    <table className="table">
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Tax invoice no.</th>
-          <th>Buyer</th>
-          <th>Marks</th>
-          <th>Destination</th>
-          <th className="numeric">Total kg</th>
-        </tr>
-      </thead>
-      <tbody>
-        {saudas.map((sauda) => (
-          <tr key={sauda.id}>
-            <td>{formatDate(sauda.sauda_date)}</td>
-            <td>{sauda.tax_invoice_no || "—"}</td>
-            <td>{sauda.buyer_name}</td>
-            <td>{markSummary(sauda)}</td>
-            <td>{sauda.destination || "—"}</td>
-            <td className="numeric">{formatKg(Number(sauda.total_kg))}</td>
+    <div className="table-scroll">
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Sauda no.</th>
+            <th>Sauda date</th>
+            <th>Bill date</th>
+            <th>Tax invoice no.</th>
+            <th>Buyer</th>
+            <th>Marks</th>
+            <th>Destination</th>
+            <th className="numeric">Total kg</th>
+            <th className="numeric">Bill total</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {saudas.map((sauda) => (
+            <tr key={sauda.id}>
+              <td>{sauda.sauda_no || "—"}</td>
+              <td>{formatDate(sauda.sauda_date)}</td>
+              <td>{sauda.bill_date ? formatDate(sauda.bill_date) : "—"}</td>
+              <td>{sauda.tax_invoice_no || "—"}</td>
+              <td>{sauda.buyer_name}</td>
+              <td>{markSummary(sauda)}</td>
+              <td>{sauda.destination || "—"}</td>
+              <td className="numeric">{formatKg(Number(sauda.total_kg))}</td>
+              <td className="numeric">
+                {sauda.total_tax_bill_amt ? formatMoney(Number(sauda.total_tax_bill_amt)) : "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

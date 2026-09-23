@@ -11,15 +11,35 @@ const today = () => {
 const blankLine = () => ({ markId: null, lotNos: "", gradeText: "", grades: [] });
 
 const blankValues = () => ({
+  sauda_no: "",
   sauda_date: today(),
+  bill_date: "",
   tax_invoice_no: "",
   destination: "",
   buyer_id: null,
-  total_tax_bill_amt: "",
-  gst_amt: "",
-  disc_amt: "",
-  taxable_value: "",
+  amount: "",
+  discount_percent: "",
 });
+
+// Mirrors Sauda#set_amounts. The server is what actually stores these, so the
+// rounding has to match step for step or the figures shift on save.
+const GST_RATE = 0.05;
+
+const round2 = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
+
+const deriveAmounts = ({ amount, discount_percent: discountPercent }) => {
+  const base = Number(amount);
+  if (amount === "" || Number.isNaN(base)) return null;
+
+  const discAmt = round2((base * (Number(discountPercent) || 0)) / 100);
+  const taxableValue = round2(base - discAmt);
+  const gstAmt = round2(taxableValue * GST_RATE);
+
+  return { discAmt, taxableValue, gstAmt, totalTaxBillAmt: round2(taxableValue + gstAmt) };
+};
+
+const formatMoney = (value) =>
+  value.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 // Adding a buyer means leaving this page, so the half-filled sauda is parked
 // in sessionStorage and picked up again on the way back.
@@ -168,20 +188,7 @@ export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
 
   const errorFor = (key) => errors[key]?.[0];
 
-  const amount = (name, label) => (
-    <div className="field">
-      <label htmlFor={name}>{label}</label>
-      <input
-        id={name}
-        type="number"
-        min="0"
-        step="0.01"
-        value={values[name]}
-        onChange={setField(name)}
-      />
-      {errorFor(name) && <p className="field__error">{errorFor(name)}</p>}
-    </div>
-  );
+  const derived = deriveAmounts(values);
 
   if (loading) return <p className="muted">Loading…</p>;
 
@@ -233,8 +240,19 @@ export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
           </div>
 
           <div className="field">
+            <label htmlFor="sauda_no">Sauda no.</label>
+            <input
+              id="sauda_no"
+              type="text"
+              value={values.sauda_no}
+              onChange={setField("sauda_no")}
+            />
+            {errorFor("sauda_no") && <p className="field__error">{errorFor("sauda_no")}</p>}
+          </div>
+
+          <div className="field">
             <label htmlFor="sauda_date">
-              Date<span className="field__required"> *</span>
+              Sauda date<span className="field__required"> *</span>
             </label>
             <input
               id="sauda_date"
@@ -243,6 +261,17 @@ export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
               onChange={setField("sauda_date")}
             />
             {errorFor("sauda_date") && <p className="field__error">{errorFor("sauda_date")}</p>}
+          </div>
+
+          <div className="field">
+            <label htmlFor="bill_date">Bill date</label>
+            <input
+              id="bill_date"
+              type="date"
+              value={values.bill_date}
+              onChange={setField("bill_date")}
+            />
+            {errorFor("bill_date") && <p className="field__error">{errorFor("bill_date")}</p>}
           </div>
 
           <div className="field">
@@ -311,11 +340,60 @@ export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
       <fieldset>
         <legend>Amounts</legend>
         <div className="grid">
-          {amount("total_tax_bill_amt", "Total tax bill amt.")}
-          {amount("gst_amt", "GST amt.")}
-          {amount("disc_amt", "Disc. amt.")}
-          {amount("taxable_value", "Taxable value")}
+          <div className="field">
+            <label htmlFor="amount">Amount</label>
+            <input
+              id="amount"
+              type="number"
+              min="0"
+              step="0.01"
+              value={values.amount}
+              onChange={setField("amount")}
+            />
+            {errorFor("amount") && <p className="field__error">{errorFor("amount")}</p>}
+          </div>
+
+          <div className="field">
+            <label htmlFor="discount_percent">Discount %</label>
+            <input
+              id="discount_percent"
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              value={values.discount_percent}
+              onChange={setField("discount_percent")}
+            />
+            {errorFor("discount_percent") && (
+              <p className="field__error">{errorFor("discount_percent")}</p>
+            )}
+          </div>
         </div>
+
+        {derived ? (
+          <dl className="derived">
+            <div className="derived__row">
+              <dt>Disc. amt.</dt>
+              <dd>{formatMoney(derived.discAmt)}</dd>
+            </div>
+            <div className="derived__row">
+              <dt>Taxable value</dt>
+              <dd>{formatMoney(derived.taxableValue)}</dd>
+            </div>
+            <div className="derived__row">
+              <dt>GST amt. (5%)</dt>
+              <dd>{formatMoney(derived.gstAmt)}</dd>
+            </div>
+            <div className="derived__row derived__row--total">
+              <dt>Total tax bill amt.</dt>
+              <dd>{formatMoney(derived.totalTaxBillAmt)}</dd>
+            </div>
+          </dl>
+        ) : (
+          <p className="muted">
+            Enter an amount and the discount, GST and bill total work themselves out.
+          </p>
+        )}
       </fieldset>
 
       <div className="form-actions">
@@ -340,11 +418,10 @@ const LABELS = {
   sauda_grades: "grades",
   lot_nos: "lot no.",
   tax_invoice_no: "tax invoice no.",
-  total_tax_bill_amt: "total tax bill amt.",
-  gst_amt: "GST amt.",
-  disc_amt: "disc. amt.",
-  taxable_value: "taxable value",
-  sauda_date: "date",
+  sauda_no: "sauda no.",
+  sauda_date: "sauda date",
+  bill_date: "bill date",
+  discount_percent: "discount %",
 };
 
 const label = (attribute) => LABELS[attribute] ?? attribute.replace(/_/g, " ");
