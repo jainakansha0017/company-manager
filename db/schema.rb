@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_23_140100) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_23_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -124,6 +124,15 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_23_140100) do
     t.index ["company_id", "seller_id", "created_at"], name: "index_saudas_on_company_id_and_seller_id_and_created_at"
     t.index ["company_id"], name: "index_saudas_on_company_id"
     t.index ["seller_id"], name: "index_saudas_on_seller_id"
+  end
+
+  create_table "users", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "email", null: false
+    t.string "password_digest", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email"], name: "index_users_on_email", unique: true
   end
 
   add_foreign_key "marks", "parties", column: "seller_id"

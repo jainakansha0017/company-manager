@@ -5,6 +5,10 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
+      # Singular: there is only ever the current session. GET asks who is
+      # signed in, POST signs in, DELETE signs out.
+      resource :session, only: %i[show create destroy]
+
       resources :companies, only: %i[index create update destroy]
       resources :buyers, only: %i[index create update destroy]
       resources :sellers, only: %i[index create update destroy]

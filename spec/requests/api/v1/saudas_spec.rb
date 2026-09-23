@@ -6,6 +6,9 @@ RSpec.describe "Api::V1 saudas" do
   let(:seller) { create(:seller, company: company) }
   let(:buyer) { create(:buyer, company: company) }
 
+  # The API is closed to anyone not signed in; sessions_spec covers that side.
+  before { sign_in }
+
   describe "GET /api/v1/saudas" do
     it "returns this seller's saudas, newest date first" do
       older = create(:sauda, company: company, seller: seller, sauda_date: 3.days.ago.to_date)

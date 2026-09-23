@@ -3,6 +3,9 @@ require "rails_helper"
 RSpec.describe "Api::V1::Companies", type: :request do
   let(:json) { response.parsed_body }
 
+  # The API is closed to anyone not signed in; sessions_spec covers that side.
+  before { sign_in }
+
   describe "GET /api/v1/companies" do
     it "returns companies newest first with their bank accounts" do
       create(:company, name: "Older Co", created_at: 2.days.ago)

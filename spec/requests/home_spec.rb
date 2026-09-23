@@ -31,9 +31,20 @@ RSpec.describe "Home", type: :request do
   end
 
   it "still routes the API rather than the SPA" do
+    sign_in
+
     get "/api/v1/companies"
 
     expect(response).to have_http_status(:ok)
+    expect(response.body).not_to include('<div id="root">')
+  end
+
+  # The catch-all must not swallow /api either when signed out: the answer
+  # should be a JSON 401, not the SPA shell with a 200.
+  it "refuses the API rather than serving the SPA when signed out" do
+    get "/api/v1/companies"
+
+    expect(response).to have_http_status(:unauthorized)
     expect(response.body).not_to include('<div id="root">')
   end
 end

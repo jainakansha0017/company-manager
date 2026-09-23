@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { listCompanies } from "../lib/api";
+import { getSession, listCompanies, logOut } from "../lib/api";
 import HomePage from "./HomePage";
 import CompaniesPage from "./CompaniesPage";
 import CompanyWorkspace, { DEFAULT_TAB } from "./CompanyWorkspace";
+import LoginPage from "./LoginPage";
 import PartyPage from "./PartyPage";
 
 // /companies/:id, /companies/:id/:tab, /companies/:id/:tab/:action
@@ -60,6 +61,11 @@ const NAV = [
 export default function App() {
   const [route, setRoute] = useState(() => parseRoute(currentHref()));
 
+  // `undefined` while we are still asking the server; `null` once we know
+  // nobody is signed in. The difference matters — rendering the login form
+  // before the answer arrives flashes it at someone who is already signed in.
+  const [currentUser, setCurrentUser] = useState(undefined);
+
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -69,16 +75,38 @@ export default function App() {
     try {
       setCompanies(await listCompanies());
       setError(null);
-    } catch {
-      setError("Could not load companies. Is the server running?");
+    } catch (failure) {
+      // The session can lapse while the tab sits open. Drop back to the login
+      // form rather than showing a load error that a retry cannot fix.
+      if (failure.status === 401) setCurrentUser(null);
+      else setError("Could not load companies. Is the server running?");
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadCompanies();
-  }, [loadCompanies]);
+    getSession()
+      .then(setCurrentUser)
+      .catch(() => setCurrentUser(null));
+  }, []);
+
+  // Companies are only fetched once there is someone to fetch them for, and
+  // again after a different user signs in.
+  useEffect(() => {
+    if (currentUser) loadCompanies();
+  }, [currentUser, loadCompanies]);
+
+  const signOut = useCallback(async () => {
+    try {
+      await logOut();
+    } finally {
+      // Whatever the server said, this browser is done with the session.
+      setCurrentUser(null);
+      setCompanies([]);
+      setError(null);
+    }
+  }, []);
 
   useEffect(() => {
     const onPopState = () => setRoute(parseRoute(currentHref()));
@@ -155,6 +183,23 @@ export default function App() {
     }
   };
 
+  // Nothing is worth drawing until we know who is asking.
+  if (currentUser === undefined) {
+    return (
+      <div className="page">
+        <p className="muted">Loading…</p>
+      </div>
+    );
+  }
+
+  if (currentUser === null) {
+    return (
+      <div className="page">
+        <LoginPage onSignedIn={setCurrentUser} />
+      </div>
+    );
+  }
+
   return (
     <div className={`page${wide ? " page--wide" : ""}`}>
       <nav className="nav">
@@ -171,6 +216,13 @@ export default function App() {
             {entry.label}
           </a>
         ))}
+
+        <div className="nav__user">
+          <span className="nav__user-name">{currentUser.name}</span>
+          <button type="button" className="button button--small" onClick={signOut}>
+            Sign out
+          </button>
+        </div>
       </nav>
 
       {renderRoute()}

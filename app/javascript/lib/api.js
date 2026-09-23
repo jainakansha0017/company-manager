@@ -1,5 +1,14 @@
-const csrfToken = () =>
-  document.querySelector('meta[name="csrf-token"]')?.content || "";
+const csrfMeta = () => document.querySelector('meta[name="csrf-token"]');
+
+const csrfToken = () => csrfMeta()?.content || "";
+
+// Signing in and out resets the session, which rotates the CSRF token and kills
+// the one this page was served with. The session endpoints hand the new one
+// back so the app can carry on without a reload.
+const setCsrfToken = (token) => {
+  const meta = csrfMeta();
+  if (meta && token) meta.content = token;
+};
 
 async function request(path, options = {}) {
   const response = await fetch(path, {
@@ -23,6 +32,24 @@ async function request(path, options = {}) {
 
   return body;
 }
+
+// Who is signed in. Throws with `status === 401` when nobody is, which is how
+// the app decides to show the login form rather than an error.
+export const getSession = () => request("/api/v1/session");
+
+export const logIn = async (email, password) => {
+  const user = await request("/api/v1/session", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+  setCsrfToken(user.csrf_token);
+  return user;
+};
+
+export const logOut = async () => {
+  const body = await request("/api/v1/session", { method: "DELETE" });
+  setCsrfToken(body?.csrf_token);
+};
 
 export const listCompanies = () => request("/api/v1/companies");
 

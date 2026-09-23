@@ -4,6 +4,9 @@ RSpec.describe "Api::V1 marks" do
   let(:json) { JSON.parse(response.body) }
   let(:seller) { create(:seller) }
 
+  # The API is closed to anyone not signed in; sessions_spec covers that side.
+  before { sign_in }
+
   describe "GET /api/v1/marks" do
     it "returns this seller's marks in name order" do
       create(:mark, seller: seller, name: "Zenith")

@@ -55,6 +55,22 @@ body {
   border-bottom-color: var(--primary);
 }
 
+/* Who is signed in, pushed to the far end of the nav so it never competes with
+   the links for the eye. */
+.nav__user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  padding-bottom: 6px;
+}
+
+.nav__user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
 .tabs {
   display: flex;
   gap: 4px;
@@ -199,6 +215,27 @@ body {
 
 .card--narrow {
   max-width: 480px;
+}
+
+/* The only thing on the page when signed out, so it is centred and kept narrow
+   rather than running the full width of an empty window. */
+.login {
+  max-width: 380px;
+  margin: 8vh auto 0;
+}
+
+.login__heading {
+  margin: 0;
+  font-size: 22px;
+}
+
+.login__intro {
+  margin: 4px 0 20px;
+  font-size: 14px;
+}
+
+.login .button {
+  width: 100%;
 }
 
 .page__subtitle {

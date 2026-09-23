@@ -5,6 +5,9 @@ require "rails_helper"
 RSpec.describe "Api::V1 buyers and sellers" do
   let(:json) { JSON.parse(response.body) }
 
+  # The API is closed to anyone not signed in; sessions_spec covers that side.
+  before { sign_in }
+
   %w[buyer seller].each do |role|
     describe "/api/v1/#{role}s" do
       # Eager so the company's own bank account is not counted inside `expect {}`.
