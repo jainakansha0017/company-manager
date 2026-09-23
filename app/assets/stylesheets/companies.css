@@ -441,6 +441,38 @@ legend {
   color: var(--success);
 }
 
+/* What the seller's register comes to, read before the rows rather than hunted
+   for at the foot of them. The items wrap onto a second line in a narrow window
+   instead of shrinking, since a squeezed figure is no use. */
+.totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0 0 16px;
+}
+
+.totals__item {
+  flex: 1 1 180px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #f7f9fc;
+}
+
+.totals__item dt {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.totals__item dd {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 /* The register is wide enough to overflow a narrow window. Scroll the table
    rather than the page, so the rest of the layout stays put. */
 .table-scroll {
@@ -483,10 +515,14 @@ legend {
   overflow-wrap: anywhere;
 }
 
+/* Headings in the register are set in the body's black rather than the grey the
+   other tables use: at this size and with this many columns, grey headings
+   recede into the rules and stop marking out which column is which. */
 .table.table--register th {
   font-size: 12px;
   letter-spacing: 0;
   text-transform: none;
+  color: var(--text);
 }
 
 /* A figure broken over two lines cannot be read, so the money is set a shade
@@ -510,7 +546,6 @@ legend {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--muted);
 }
 
 /* One rule draws the divide between the bands all the way down the table. */
