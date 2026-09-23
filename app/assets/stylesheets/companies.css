@@ -611,10 +611,15 @@ legend {
   border-bottom: 0;
 }
 
-/* A cell spanning a sauda's marks reads better level with the first of them
-   than floating in the middle of the group. */
+/* A cell that spans only its own row sits at the top, level with its
+   neighbours. One spanning a group of marks is centred instead, so it reads as
+   belonging to the whole group rather than to the first mark of it. */
 .table td[rowspan] {
   vertical-align: top;
+}
+
+.table td[rowspan]:not([rowspan="1"]) {
+  vertical-align: middle;
 }
 
 .table__actions {
