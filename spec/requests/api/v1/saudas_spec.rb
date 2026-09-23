@@ -40,7 +40,8 @@ RSpec.describe "Api::V1 saudas" do
       get "/api/v1/saudas", params: { company_id: company.id, seller_id: seller.id }
 
       expect(json.first.keys).to match_array(
-        %w[id company_id seller_id buyer_id buyer_name sauda_date tax_invoice_no destination
+        %w[id company_id seller_id buyer_id buyer_name sauda_no sauda_date bill_date
+           tax_invoice_no destination amount discount_percent
            total_tax_bill_amt gst_amt disc_amt taxable_value total_kg created_at sauda_marks]
       )
     end
@@ -65,13 +66,13 @@ RSpec.describe "Api::V1 saudas" do
           company_id: company.id,
           seller_id: seller.id,
           buyer_id: buyer.id,
+          sauda_no: "S-2026-042",
           sauda_date: "2026-09-21",
+          bill_date: "2026-09-23",
           tax_invoice_no: "TI-2026-118",
           destination: "Siliguri",
-          total_tax_bill_amt: "125000.00",
-          gst_amt: "6250.00",
-          disc_amt: "500.00",
-          taxable_value: "118250.00",
+          amount: "100000.00",
+          discount_percent: "2.5",
           sauda_marks_attributes: [
             {
               mark_id: mark.id,
@@ -102,6 +103,29 @@ RSpec.describe "Api::V1 saudas" do
       post "/api/v1/saudas", params: valid_params
 
       expect(json["total_kg"].to_f).to eq(455.0)
+    end
+
+    it "works out the bill from the amount and the discount" do
+      post "/api/v1/saudas", params: valid_params
+
+      expect(json["disc_amt"].to_f).to eq(2_500.0)
+      expect(json["taxable_value"].to_f).to eq(97_500.0)
+      expect(json["gst_amt"].to_f).to eq(4_875.0)
+      expect(json["total_tax_bill_amt"].to_f).to eq(102_375.0)
+    end
+
+    # The worked-out figures are not permitted parameters, so a caller cannot
+    # post a bill that disagrees with the amount it claims to come from.
+    it "ignores worked-out amounts sent by the caller" do
+      params = valid_params.deep_merge(
+        sauda: { disc_amt: "0.00", gst_amt: "1.00", taxable_value: "1.00",
+                 total_tax_bill_amt: "1.00" }
+      )
+
+      post "/api/v1/saudas", params: params
+
+      expect(json["disc_amt"].to_f).to eq(2_500.0)
+      expect(json["total_tax_bill_amt"].to_f).to eq(102_375.0)
     end
 
     it "rejects a sauda without a mark" do

@@ -25,9 +25,12 @@ module Api
       private
 
       def sauda_params
+        # disc_amt, taxable_value, gst_amt and total_tax_bill_amt are deliberately
+        # absent: the model works them out from amount and discount_percent, so
+        # accepting them here would only invite a bill that disagrees with itself.
         params.require(:sauda).permit(
-          :company_id, :seller_id, :buyer_id, :sauda_date, :tax_invoice_no, :destination,
-          :total_tax_bill_amt, :gst_amt, :disc_amt, :taxable_value,
+          :company_id, :seller_id, :buyer_id, :sauda_no, :sauda_date, :bill_date,
+          :tax_invoice_no, :destination, :amount, :discount_percent,
           sauda_marks_attributes: [
             :id, :mark_id, :lot_nos, :_destroy,
             { sauda_grades_attributes: %i[id grade bags weight _destroy] }
@@ -37,7 +40,8 @@ module Api
 
       def serialize(sauda)
         sauda.as_json(
-          only: %i[id company_id seller_id buyer_id sauda_date tax_invoice_no destination
+          only: %i[id company_id seller_id buyer_id sauda_no sauda_date bill_date
+                   tax_invoice_no destination amount discount_percent
                    total_tax_bill_amt gst_amt disc_amt taxable_value total_kg created_at]
         ).merge(
           "buyer_name" => sauda.buyer&.name,

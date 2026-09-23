@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_20_192923) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_22_051500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -108,8 +108,13 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_20_192923) do
     t.decimal "taxable_value", precision: 12, scale: 2
     t.decimal "total_kg", precision: 12, scale: 3, default: "0.0", null: false
     t.bigint "buyer_id"
+    t.string "sauda_no"
+    t.date "bill_date"
+    t.decimal "amount", precision: 12, scale: 2
+    t.decimal "discount_percent", precision: 5, scale: 2
     t.index ["buyer_id"], name: "index_saudas_on_buyer_id"
     t.index ["company_id", "sauda_date"], name: "index_saudas_on_company_id_and_sauda_date"
+    t.index ["company_id", "sauda_no"], name: "index_saudas_on_company_id_and_sauda_no"
     t.index ["company_id", "seller_id", "created_at"], name: "index_saudas_on_company_id_and_seller_id_and_created_at"
     t.index ["company_id"], name: "index_saudas_on_company_id"
     t.index ["seller_id"], name: "index_saudas_on_seller_id"

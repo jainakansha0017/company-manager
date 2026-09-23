@@ -64,11 +64,62 @@ RSpec.describe Sauda do
     expect(sauda.errors[:sauda_marks]).to include("must include at least one mark")
   end
 
-  it "rejects negative amounts" do
-    sauda = build(:sauda, gst_amt: -1)
+  it "rejects a negative amount" do
+    sauda = build(:sauda, amount: -1)
 
     expect(sauda).not_to be_valid
-    expect(sauda.errors[:gst_amt]).to be_present
+    expect(sauda.errors[:amount]).to be_present
+  end
+
+  it "rejects a discount of more than the whole amount" do
+    sauda = build(:sauda, amount: 100, discount_percent: 101)
+
+    expect(sauda).not_to be_valid
+    expect(sauda.errors[:discount_percent]).to be_present
+  end
+
+  describe "the bill" do
+    it "takes the discount off the amount and puts GST on what is left" do
+      sauda = create(:sauda, amount: 100_000, discount_percent: 2.5)
+
+      expect(sauda.disc_amt).to eq(2_500)
+      expect(sauda.taxable_value).to eq(97_500)
+      expect(sauda.gst_amt).to eq(4_875)
+      expect(sauda.total_tax_bill_amt).to eq(102_375)
+    end
+
+    it "bills the full amount when there is no discount" do
+      sauda = create(:sauda, amount: 1_000)
+
+      expect(sauda.disc_amt).to eq(0)
+      expect(sauda.taxable_value).to eq(1_000)
+      expect(sauda.total_tax_bill_amt).to eq(1_050)
+    end
+
+    it "rounds each step to paise, so the stored figures add up" do
+      sauda = create(:sauda, amount: 999.99, discount_percent: 3.33)
+
+      expect(sauda.disc_amt).to eq(33.30)
+      expect(sauda.taxable_value).to eq(966.69)
+      expect(sauda.gst_amt).to eq(48.33)
+      expect(sauda.total_tax_bill_amt).to eq(1_015.02)
+      expect(sauda.taxable_value + sauda.gst_amt).to eq(sauda.total_tax_bill_amt)
+    end
+
+    it "recalculates when the amount changes" do
+      sauda = create(:sauda, amount: 1_000)
+
+      sauda.update!(amount: 2_000)
+
+      expect(sauda.total_tax_bill_amt).to eq(2_100)
+    end
+
+    it "leaves the bill empty until an amount is entered" do
+      sauda = create(:sauda)
+
+      expect(sauda.amount).to be_nil
+      expect(sauda.total_tax_bill_amt).to be_nil
+    end
   end
 
   describe "#total_kg" do

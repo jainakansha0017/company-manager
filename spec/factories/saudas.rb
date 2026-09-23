@@ -10,7 +10,9 @@ FactoryBot.define do
     # Default the seller and buyer into the same company, which the model requires.
     seller { association :seller, company: company }
     buyer { association :buyer, company: company }
+    sequence(:sauda_no) { |n| "S-#{format('%04d', n)}" }
     sauda_date { Date.current }
+    bill_date { Date.current }
     sequence(:tax_invoice_no) { |n| "TI-#{format('%04d', n)}" }
     destination { "Kolkata" }
 
