@@ -37,6 +37,7 @@ function parseRoute(href) {
       action: company[3] ?? null,
       sellerId: query.get("seller_id"),
       buyerId: query.get("buyer_id"),
+      saudaId: query.get("sauda_id"),
       sellerJustAdded: query.get("added") === "1",
       saudaSaved: query.get("saved") === "1",
     };
@@ -93,6 +94,11 @@ export default function App() {
 
   const activeNav = NAV_FOR[route.name] ?? route.name;
 
+  // The register sets fifteen columns side by side, so it is given more of the
+  // window than the forms and short lists the rest of the app is made of.
+  const wide =
+    route.name === "company" && route.tab === "sauda-register" && !route.action;
+
   const renderRoute = () => {
     switch (route.name) {
       case "manage":
@@ -114,6 +120,7 @@ export default function App() {
             action={route.action}
             sellerId={route.sellerId}
             buyerId={route.buyerId}
+            saudaId={route.saudaId}
             sellerJustAdded={route.sellerJustAdded}
             saudaSaved={route.saudaSaved}
             loading={loading}
@@ -149,7 +156,7 @@ export default function App() {
   };
 
   return (
-    <div className="page">
+    <div className={`page${wide ? " page--wide" : ""}`}>
       <nav className="nav">
         {NAV.map((entry) => (
           <a

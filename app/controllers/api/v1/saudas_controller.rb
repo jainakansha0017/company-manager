@@ -3,6 +3,8 @@ module Api
     class SaudasController < ApplicationController
       protect_from_forgery with: :exception
 
+      before_action :set_sauda, only: %i[show update destroy]
+
       # Always read through the register: /api/v1/saudas?company_id=1&seller_id=2
       def index
         scope = Sauda.where(company_id: params[:company_id], seller_id: params[:seller_id])
@@ -10,6 +12,11 @@ module Api
                      .ordered
 
         render json: scope.map { |sauda| serialize(sauda) }
+      end
+
+      # One sauda on its own, so the edit form works from a pasted link.
+      def show
+        render json: serialize(@sauda)
       end
 
       def create
@@ -22,7 +29,38 @@ module Api
         end
       end
 
+      def update
+        if @sauda.update(replacing_marks(sauda_params))
+          render json: serialize(@sauda)
+        else
+          render json: { errors: @sauda.errors.messages }, status: :unprocessable_content
+        end
+      end
+
+      def destroy
+        @sauda.destroy
+        head :no_content
+      end
+
       private
+
+      def set_sauda
+        @sauda = Sauda.includes(:buyer, sauda_marks: %i[mark sauda_grades]).find(params[:id])
+      rescue ActiveRecord::RecordNotFound
+        render json: { errors: { base: ["Sauda not found"] } }, status: :not_found
+      end
+
+      # The form sends its marks whole every time, so the ones on record are
+      # dropped and written again rather than matched up row by row. Nothing
+      # outside the sauda refers to a sauda_mark, so rewriting them is invisible,
+      # and doing it through _destroy keeps it inside the save's transaction —
+      # a sauda that fails validation still has the marks it started with.
+      def replacing_marks(attributes)
+        return attributes unless attributes.key?(:sauda_marks_attributes)
+
+        dropped = @sauda.sauda_mark_ids.map { |id| { id: id, _destroy: true } }
+        attributes.merge(sauda_marks_attributes: dropped + attributes[:sauda_marks_attributes])
+      end
 
       def sauda_params
         # amount and the four figures worked out from it are deliberately absent:

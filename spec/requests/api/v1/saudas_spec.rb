@@ -192,4 +192,129 @@ RSpec.describe "Api::V1 saudas" do
       expect(json["errors"]["sauda_marks[0].mark"]).to include("does not belong to this seller")
     end
   end
+
+  describe "GET /api/v1/saudas/:id" do
+    it "returns the sauda with its marks and grades" do
+      sauda = create(:sauda, company: company, seller: seller, buyer: buyer)
+
+      get "/api/v1/saudas/#{sauda.id}"
+
+      expect(response).to have_http_status(:ok)
+      expect(json["id"]).to eq(sauda.id)
+      expect(json["buyer_name"]).to eq(buyer.name)
+      expect(json["sauda_marks"].first["sauda_grades"]).to be_present
+    end
+
+    it "404s for an unknown id" do
+      get "/api/v1/saudas/0"
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  describe "PATCH /api/v1/saudas/:id" do
+    let(:sauda) { create(:sauda, company: company, seller: seller, buyer: buyer) }
+    let(:mark) { create(:mark, seller: seller) }
+
+    it "updates the sauda's own fields" do
+      patch "/api/v1/saudas/#{sauda.id}",
+            params: { sauda: { destination: "Guwahati", tax_invoice_no: "TI-2026-900" } }
+
+      expect(response).to have_http_status(:ok)
+      expect(sauda.reload.destination).to eq("Guwahati")
+      expect(sauda.tax_invoice_no).to eq("TI-2026-900")
+    end
+
+    # The form posts the marks whole, so what comes back is what was sent, not
+    # the new rows added on top of the old ones.
+    it "replaces the marks rather than adding to them" do
+      patch "/api/v1/saudas/#{sauda.id}", params: {
+        sauda: {
+          sauda_marks_attributes: [
+            {
+              mark_id: mark.id,
+              lot_nos: "L-9",
+              sauda_grades_attributes: [{ grade: "BOP", bags: 2, weight: "50.0", rate: "300.00" }]
+            }
+          ]
+        }
+      }
+
+      expect(response).to have_http_status(:ok)
+      expect(json["sauda_marks"].length).to eq(1)
+      expect(json["sauda_marks"].first["lot_nos"]).to eq("L-9")
+      expect(sauda.reload.sauda_marks.count).to eq(1)
+    end
+
+    it "re-works the bill from the marks it was given" do
+      patch "/api/v1/saudas/#{sauda.id}", params: {
+        sauda: {
+          discount_percent: "10.0",
+          sauda_marks_attributes: [
+            {
+              mark_id: mark.id,
+              # 100 kg @ 100 = 10,000.
+              sauda_grades_attributes: [{ grade: "PD", bags: 4, weight: "25.0", rate: "100.00" }]
+            }
+          ]
+        }
+      }
+
+      expect(json["total_kg"].to_f).to eq(100.0)
+      expect(json["amount"].to_f).to eq(10_000.0)
+      expect(json["disc_amt"].to_f).to eq(1_000.0)
+      expect(json["taxable_value"].to_f).to eq(9_000.0)
+      expect(json["gst_amt"].to_f).to eq(450.0)
+      expect(json["total_tax_bill_amt"].to_f).to eq(9_450.0)
+    end
+
+    # The replacement is part of the save, so a rejected edit must not take the
+    # marks that were already there down with it.
+    it "keeps the marks it had when the edit is rejected" do
+      before_marks = sauda.sauda_marks.pluck(:id)
+
+      patch "/api/v1/saudas/#{sauda.id}", params: {
+        sauda: {
+          sauda_marks_attributes: [
+            {
+              mark_id: mark.id,
+              sauda_grades_attributes: [{ grade: "PD", bags: 0, weight: "25.0" }]
+            }
+          ]
+        }
+      }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(sauda.reload.sauda_marks.pluck(:id)).to eq(before_marks)
+    end
+
+    it "404s for an unknown id" do
+      patch "/api/v1/saudas/0", params: { sauda: { destination: "Nowhere" } }
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
+  describe "DELETE /api/v1/saudas/:id" do
+    it "deletes the sauda with its marks and grades" do
+      sauda = create(:sauda, company: company, seller: seller, mark_count: 2)
+
+      expect { delete "/api/v1/saudas/#{sauda.id}" }
+        .to change(Sauda, :count).by(-1)
+        .and change(SaudaMark, :count).by(-2)
+        .and change(SaudaGrade, :count).by(-2)
+
+      expect(response).to have_http_status(:no_content)
+    end
+
+    it "leaves the seller, buyer and marks themselves alone" do
+      sauda = create(:sauda, company: company, seller: seller, buyer: buyer)
+
+      expect { delete "/api/v1/saudas/#{sauda.id}" }.not_to change(Party, :count)
+      expect(Mark.where(seller: seller)).to be_present
+    end
+
+    it "404s for an unknown id" do
+      delete "/api/v1/saudas/0"
+      expect(response).to have_http_status(:not_found)
+    end
+  end
 end

@@ -24,6 +24,12 @@ body {
   padding: 32px 20px 64px;
 }
 
+/* A page whose job is a wide table rather than a form. Still capped, so the
+   register does not stretch to arm's length on a large monitor. */
+.page--wide {
+  max-width: 1500px;
+}
+
 .nav {
   display: flex;
   gap: 4px;
@@ -451,6 +457,96 @@ legend {
   min-width: 620px;
 }
 
+/* The register lays a sauda's dates, marks, quantities and the whole bill out
+   side by side. Fifteen columns will not fit on their content widths, so the
+   table is laid out to the page and each column is given a share of it. */
+.table.table--register {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* Below this the columns stop being readable, so the register scrolls inside
+   its card rather than squeezing further. */
+.table-scroll .table.table--register {
+  min-width: 1100px;
+}
+
+.table.table--register th,
+.table.table--register td {
+  padding: 8px 8px;
+  font-size: 13px;
+}
+
+/* Values may break anywhere to fit their column; a heading broken mid-word is
+   unreadable, so headings keep their case and wrap only between words. */
+.table.table--register td {
+  overflow-wrap: anywhere;
+}
+
+.table.table--register th {
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* A figure broken over two lines cannot be read, so the money is set a shade
+   tighter to earn its single line. */
+.table.table--register .numeric {
+  font-size: 12px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.table.table--register td.numeric {
+  white-space: nowrap;
+}
+
+/* The band naming each group of five columns. */
+.table.table--register .table__bands th {
+  padding-top: 9px;
+  padding-bottom: 5px;
+  border-bottom: 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+/* One rule draws the divide between the bands all the way down the table. */
+.table.table--register .col--band-start {
+  border-left: 1px solid var(--border);
+}
+
+/* Where one sauda ends and the next begins, rather than leaving it to be
+   inferred from where the spanned cells restart. */
+.table.table--register tbody tr.table__row--sauda:not(:first-child) td {
+  border-top: 2px solid var(--border);
+}
+
+.table.table--register tbody tr.table__row--tinted td {
+  background: #f7f9fc;
+}
+
+/* Shares add up to 100, allotted by what each column has to fit: a lakh figure
+   needs the room, a bag count does not, and words can always wrap. */
+.table.table--register col:nth-child(1) { width: 7%; }    /* Date */
+.table.table--register col:nth-child(2) { width: 7%; }    /* Tax invoice no. */
+.table.table--register col:nth-child(3) { width: 7%; }    /* Bill date */
+.table.table--register col:nth-child(4) { width: 6.5%; }  /* Destination */
+.table.table--register col:nth-child(5) { width: 7%; }    /* Buyer */
+.table.table--register col:nth-child(6) { width: 7%; }    /* Mark */
+.table.table--register col:nth-child(7) { width: 6%; }    /* Lot no. */
+.table.table--register col:nth-child(8) { width: 6%; }    /* Grade */
+.table.table--register col:nth-child(9) { width: 3.5%; }  /* Bags */
+.table.table--register col:nth-child(10) { width: 4.5%; } /* Kg */
+.table.table--register col:nth-child(11) { width: 7%; }   /* Total */
+.table.table--register col:nth-child(12) { width: 6%; }   /* GST */
+.table.table--register col:nth-child(13) { width: 6%; }   /* Discount */
+.table.table--register col:nth-child(14) { width: 6.5%; } /* Amount */
+.table.table--register col:nth-child(15) { width: 6%; }   /* Brokerage */
+.table.table--register col:nth-child(16) { width: 7%; }   /* Actions */
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -480,10 +576,26 @@ legend {
   border-bottom: 0;
 }
 
+/* A cell spanning a sauda's marks reads better level with the first of them
+   than floating in the middle of the group. */
+.table td[rowspan] {
+  vertical-align: top;
+}
+
 .table__actions {
   display: flex;
   gap: 6px;
   justify-content: flex-end;
+}
+
+/* Two buttons will not sit side by side in a column as narrow as the
+   register's, so they stack and fill it. The flex box is this wrapper rather
+   than the cell itself, because a `display: flex` cell stops honouring its
+   rowspan. */
+.table__actions--stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
 }
 
 /* Numbers read better right aligned and lined up on the same digit width. */

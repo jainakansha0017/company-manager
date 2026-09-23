@@ -8,7 +8,7 @@ Rails.application.routes.draw do
       resources :companies, only: %i[index create update destroy]
       resources :buyers, only: %i[index create update destroy]
       resources :sellers, only: %i[index create update destroy]
-      resources :saudas, only: %i[index create]
+      resources :saudas, only: %i[index show create update destroy]
       resources :marks, only: %i[index create]
     end
   end

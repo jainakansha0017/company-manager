@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { createMark, createSauda, listMarks, listParties } from "../lib/api";
+import {
+  createMark, createSauda, getSauda, listMarks, listParties, updateSauda,
+} from "../lib/api";
 import Combobox from "./Combobox";
 import SaudaMarkFields, { formatKg, formatMoney, gradeAmount, kilos } from "./SaudaMarkFields";
 
@@ -22,6 +24,36 @@ const blankValues = () => ({
   buyer_id: null,
   discount_percent: "",
 });
+
+// A saved sauda read back into what the form holds. Nulls become empty strings
+// so every input stays controlled.
+const valuesFrom = (sauda) => ({
+  sauda_no: sauda.sauda_no ?? "",
+  sauda_date: sauda.sauda_date ?? "",
+  bill_date: sauda.bill_date ?? "",
+  tax_invoice_no: sauda.tax_invoice_no ?? "",
+  destination: sauda.destination ?? "",
+  transporter_name: sauda.transporter_name ?? "",
+  bilty_no: sauda.bilty_no ?? "",
+  bilty_date: sauda.bilty_date ?? "",
+  buyer_id: sauda.buyer_id,
+  discount_percent: sauda.discount_percent ?? "",
+});
+
+// The grade text is rebuilt from the grades themselves, so editing it splits
+// and re-splits exactly as it does on a sauda being entered for the first time.
+const linesFrom = (sauda) =>
+  sauda.sauda_marks.map((mark) => ({
+    markId: mark.mark_id,
+    lotNos: mark.lot_nos ?? "",
+    gradeText: mark.sauda_grades.map((grade) => grade.grade).join("; "),
+    grades: mark.sauda_grades.map((grade) => ({
+      grade: grade.grade,
+      bags: grade.bags ?? "",
+      weight: grade.weight ?? "",
+      rate: grade.rate ?? "",
+    })),
+  }));
 
 // Mirrors Sauda#set_amounts. The server is what actually stores these, so the
 // rounding has to match step for step or the figures shift on save.
@@ -61,12 +93,14 @@ const deriveAmounts = (lines, discountPercent) => {
 };
 
 // Adding a buyer means leaving this page, so the half-filled sauda is parked
-// in sessionStorage and picked up again on the way back.
-const draftKey = (companyId, sellerId) => `sauda-draft:${companyId}:${sellerId}`;
+// in sessionStorage and picked up again on the way back. Keyed by sauda too, so
+// an edit in progress cannot be handed the draft of a new one.
+const draftKey = (companyId, sellerId, saudaId) =>
+  `sauda-draft:${companyId}:${sellerId}:${saudaId ?? "new"}`;
 
-const takeDraft = (companyId, sellerId) => {
+const takeDraft = (companyId, sellerId, saudaId) => {
   try {
-    const key = draftKey(companyId, sellerId);
+    const key = draftKey(companyId, sellerId, saudaId);
     const raw = sessionStorage.getItem(key);
     sessionStorage.removeItem(key);
     return raw ? JSON.parse(raw) : null;
@@ -75,7 +109,8 @@ const takeDraft = (companyId, sellerId) => {
   }
 };
 
-export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
+// Enters a new sauda, or edits one already on record when given `saudaId`.
+export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNavigate }) {
   const [seller, setSeller] = useState(null);
   const [buyers, setBuyers] = useState([]);
   const [marks, setMarks] = useState([]);
@@ -83,9 +118,13 @@ export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
   const [marksLoading, setMarksLoading] = useState(true);
 
   const draft = React.useMemo(
-    () => takeDraft(companyId, sellerId),
-    [companyId, sellerId],
+    () => takeDraft(companyId, sellerId, saudaId),
+    [companyId, sellerId, saudaId],
   );
+
+  // Nothing to fetch for a new sauda, and a parked draft is newer than what is
+  // on record, so neither has to wait.
+  const [loadingSauda, setLoadingSauda] = useState(Boolean(saudaId) && !draft);
 
   const [values, setValues] = useState(() => ({
     ...blankValues(),
@@ -97,7 +136,33 @@ export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
+  const editing = Boolean(saudaId);
   const backToRegister = `/companies/${companyId}/sauda-register?seller_id=${sellerId}`;
+  const formPath = editing
+    ? `/companies/${companyId}/sauda-register/edit?seller_id=${sellerId}&sauda_id=${saudaId}`
+    : `/companies/${companyId}/sauda-register/new?seller_id=${sellerId}`;
+
+  // An edit starts from what is on record, unless we have just come back from
+  // adding a buyer — then the parked draft is the newer of the two.
+  useEffect(() => {
+    if (!saudaId || draft) return undefined;
+
+    let current = true;
+    setLoadingSauda(true);
+
+    getSauda(saudaId)
+      .then((sauda) => {
+        if (!current) return;
+        setValues(valuesFrom(sauda));
+        setLines(sauda.sauda_marks.length ? linesFrom(sauda) : [blankLine()]);
+      })
+      .catch(() => current && setErrors({ base: ["Could not load that sauda."] }))
+      .finally(() => current && setLoadingSauda(false));
+
+    return () => {
+      current = false;
+    };
+  }, [saudaId, draft]);
 
   useEffect(() => {
     let current = true;
@@ -162,15 +227,15 @@ export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
   // Buyers need the full party form, so park the draft and come back to it.
   const addNewBuyer = (name) => {
     try {
-      sessionStorage.setItem(draftKey(companyId, sellerId), JSON.stringify({ values, lines }));
+      sessionStorage.setItem(
+        draftKey(companyId, sellerId, saudaId),
+        JSON.stringify({ values, lines }),
+      );
     } catch {
       /* a full or disabled sessionStorage just means the draft is not kept */
     }
 
-    const params = new URLSearchParams({
-      company_id: companyId,
-      return: `/companies/${companyId}/sauda-register/new?seller_id=${sellerId}`,
-    });
+    const params = new URLSearchParams({ company_id: companyId, return: formPath });
     if (name) params.set("name", name);
 
     onNavigate(`/buyers/new?${params}`);
@@ -203,7 +268,11 @@ export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
     };
 
     try {
-      await createSauda(payload);
+      if (editing) {
+        await updateSauda(saudaId, payload);
+      } else {
+        await createSauda(payload);
+      }
 
       onNavigate(`${backToRegister}&saved=1`);
     } catch (error) {
@@ -217,7 +286,7 @@ export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
   const derived = deriveAmounts(lines, values.discount_percent);
   const brokerageBasis = BROKERAGE_BASES[seller?.brokerage_basis];
 
-  if (loading) return <p className="muted">Loading…</p>;
+  if (loading || loadingSauda) return <p className="muted">Loading…</p>;
 
   if (!seller) {
     return (
@@ -230,7 +299,7 @@ export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
   return (
     <form className="card panel" onSubmit={handleSubmit} noValidate>
       <div className="panel__header">
-        <h2>New Sauda</h2>
+        <h2>{editing ? "Edit Sauda" : "New Sauda"}</h2>
         <a
           href={backToRegister}
           className="link"
@@ -460,7 +529,7 @@ export default function NewSauda({ companyId, sellerId, buyerId, onNavigate }) {
 
       <div className="form-actions">
         <button type="submit" className="button button--primary" disabled={submitting}>
-          {submitting ? "Saving…" : "Save sauda"}
+          {submitting ? "Saving…" : editing ? "Update sauda" : "Save sauda"}
         </button>
         <button
           type="button"

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { listParties, listSaudas } from "../lib/api";
+import { deleteSauda, listParties, listSaudas } from "../lib/api";
 import Combobox from "./Combobox";
 import SaudaList from "./SaudaList";
 
@@ -20,6 +20,7 @@ export default function SaudaRegister({
 
   const [saudas, setSaudas] = useState([]);
   const [loadingSaudas, setLoadingSaudas] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     let current = true;
@@ -88,6 +89,31 @@ export default function SaudaRegister({
   const addNewSauda = () =>
     onNavigate(`/companies/${companyId}/sauda-register/new?seller_id=${selectedId}`);
 
+  const editSauda = (sauda) =>
+    onNavigate(
+      `/companies/${companyId}/sauda-register/edit?seller_id=${selectedId}&sauda_id=${sauda.id}`,
+    );
+
+  // A sauda takes its marks and grades down with it, so the confirmation names
+  // the sauda rather than asking about "this row".
+  const removeSauda = async (sauda) => {
+    const label = sauda.sauda_no ? `sauda ${sauda.sauda_no}` : "this sauda";
+    if (!window.confirm(`Delete ${label} for ${sauda.buyer_name}? This cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingId(sauda.id);
+    try {
+      await deleteSauda(sauda.id);
+      setSaudas((records) => records.filter((record) => record.id !== sauda.id));
+      setError(null);
+    } catch {
+      setError("Could not delete that sauda.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const selected = sellers.find((seller) => String(seller.id) === String(selectedId)) ?? null;
   // Both flashes are driven by the query string, so they only belong to the
   // seller we were sent back with.
@@ -125,7 +151,14 @@ export default function SaudaRegister({
       />
 
       {selected ? (
-        <SaudaList saudas={saudas} loading={loadingSaudas} sellerName={selected.name} />
+        <SaudaList
+          saudas={saudas}
+          loading={loadingSaudas}
+          sellerName={selected.name}
+          onEdit={editSauda}
+          onDelete={removeSauda}
+          deletingId={deletingId}
+        />
       ) : (
         <p className="muted">
           Pick a seller to see their saudas. Not in the list? Type the name and choose “Add

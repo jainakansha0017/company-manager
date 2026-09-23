@@ -1,6 +1,6 @@
 import React from "react";
 import SaudaRegister from "./SaudaRegister";
-import NewSauda from "./NewSauda";
+import SaudaForm from "./SaudaForm";
 
 export const TABS = [
   { key: "sauda-register", label: "Sauda Register" },
@@ -19,6 +19,7 @@ export default function CompanyWorkspace({
   action,
   sellerId,
   buyerId,
+  saudaId,
   sellerJustAdded,
   saudaSaved,
   loading,
@@ -86,10 +87,12 @@ export default function CompanyWorkspace({
         ))}
       </div>
 
-      {active === "sauda-register" && action === "new" ? (
-        <NewSauda
+      {active === "sauda-register" && (action === "new" || action === "edit") ? (
+        <SaudaForm
+          key={saudaId ?? "new"}
           companyId={companyId}
           sellerId={sellerId}
+          saudaId={action === "edit" ? saudaId : null}
           buyerId={buyerId}
           onNavigate={onNavigate}
         />

@@ -67,8 +67,16 @@ export const listSaudas = (companyId, sellerId) =>
       `&seller_id=${encodeURIComponent(sellerId)}`,
   );
 
+// One sauda on its own, for the edit form.
+export const getSauda = (id) => request(`/api/v1/saudas/${id}`);
+
 export const createSauda = (sauda) =>
   request("/api/v1/saudas", { method: "POST", body: JSON.stringify({ sauda }) });
+
+export const updateSauda = (id, sauda) =>
+  request(`/api/v1/saudas/${id}`, { method: "PATCH", body: JSON.stringify({ sauda }) });
+
+export const deleteSauda = (id) => request(`/api/v1/saudas/${id}`, { method: "DELETE" });
 
 // Marks belong to a seller, and can be created from the sauda form itself.
 export const listMarks = (sellerId) =>
