@@ -6,7 +6,6 @@ import SaudaList from "./SaudaList";
 // The sauda register starts from a seller: pick one (or create one on the spot)
 // and the register for that seller opens below.
 export default function SaudaRegister({
-  company,
   companyId,
   sellerId,
   sellerJustAdded,
@@ -26,14 +25,14 @@ export default function SaudaRegister({
     let current = true;
     setLoadingSellers(true);
 
-    listParties("seller", companyId)
+    listParties("seller")
       .then((records) => {
         if (!current) return;
         setSellers(records);
         setError(null);
       })
       .catch(() => {
-        if (current) setError("Could not load sellers for this company.");
+        if (current) setError("Could not load the seller list.");
       })
       .finally(() => {
         if (current) setLoadingSellers(false);
@@ -42,7 +41,7 @@ export default function SaudaRegister({
     return () => {
       current = false;
     };
-  }, [companyId]);
+  }, []);
 
   // Arriving back from "add new" with ?seller_id=… preselects what was created.
   useEffect(() => {
@@ -78,7 +77,6 @@ export default function SaudaRegister({
 
   const addNewSeller = (name) => {
     const params = new URLSearchParams({
-      company_id: companyId,
       return: `/companies/${companyId}/sauda-register`,
     });
     if (name) params.set("name", name);
@@ -147,7 +145,7 @@ export default function SaudaRegister({
         onAddNew={addNewSeller}
         addNewLabel="Add new seller"
         placeholder="Type a seller name…"
-        emptyMessage={`No sellers for ${company.name} yet.`}
+        emptyMessage="No sellers on record yet."
       />
 
       {selected ? (

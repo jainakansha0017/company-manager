@@ -21,8 +21,6 @@ class Sauda < ApplicationRecord
   validates :discount_percent,
             numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 100 },
             allow_nil: true
-  validate :seller_belongs_to_company
-  validate :buyer_belongs_to_company
   validate :must_have_a_mark
 
   scope :ordered, -> { order(sauda_date: :desc, id: :desc) }
@@ -74,19 +72,5 @@ class Sauda < ApplicationRecord
     return if live_marks.any?
 
     errors.add(:sauda_marks, "must include at least one mark")
-  end
-
-  # A company can only trade with its own parties. Compared as records rather
-  # than ids so this still holds for an unsaved sauda, where both ids are nil.
-  def seller_belongs_to_company
-    return if seller.nil? || company.nil? || seller.company == company
-
-    errors.add(:seller, "does not belong to this company")
-  end
-
-  def buyer_belongs_to_company
-    return if buyer.nil? || company.nil? || buyer.company == company
-
-    errors.add(:buyer, "does not belong to this company")
   end
 end

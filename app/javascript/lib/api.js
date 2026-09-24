@@ -69,8 +69,8 @@ export const deleteCompany = (id) =>
   request(`/api/v1/companies/${id}`, { method: "DELETE" });
 
 // Buyers and sellers share one API shape; `role` is "buyer" or "seller".
-export const listParties = (role, companyId) =>
-  request(`/api/v1/${role}s?company_id=${encodeURIComponent(companyId)}`);
+// Master data, so the list is the same whichever company is being worked on.
+export const listParties = (role) => request(`/api/v1/${role}s`);
 
 export const createParty = (role, party) =>
   request(`/api/v1/${role}s`, {

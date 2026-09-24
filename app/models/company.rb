@@ -3,11 +3,9 @@ class Company < ApplicationRecord
 
   FINANCIAL_YEAR_FORMAT = /\A\d{4}\s*-\s*\d{2}(\d{2})?\z/
 
-  # Declared first on purpose: deleting a company clears its register before it
-  # reaches the parties, which otherwise refuse to go while saudas reference them.
+  # The register is this company's own and goes with it. The buyers and sellers
+  # named in it are master data: they belong to no company and stay behind.
   has_many :saudas, dependent: :destroy
-  has_many :buyers, dependent: :destroy
-  has_many :sellers, dependent: :destroy
 
   validates :financial_year, presence: true,
                              format: { with: FINANCIAL_YEAR_FORMAT, message: "must look like 2025-26" }

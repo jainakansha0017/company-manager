@@ -10,8 +10,6 @@ RSpec.describe "Api::V1 buyers and sellers" do
 
   %w[buyer seller].each do |role|
     describe "/api/v1/#{role}s" do
-      # Eager so the company's own bank account is not counted inside `expect {}`.
-      let!(:company) { create(:company) }
       let(:factory) { role.to_sym }
       let(:model) { role.camelize.constantize }
       let(:path) { "/api/v1/#{role}s" }
@@ -19,7 +17,6 @@ RSpec.describe "Api::V1 buyers and sellers" do
       let(:valid_params) do
         {
           role => {
-            company_id: company.id,
             name: "Sundar Enterprises",
             address: "22 Rash Behari Avenue, Kolkata 700019",
             email: "books@sundar.test",
@@ -37,30 +34,30 @@ RSpec.describe "Api::V1 buyers and sellers" do
       end
 
       describe "GET index" do
-        it "returns only this company's records for this role" do
-          mine = create(factory, company: company, name: "Mine")
-          create(factory, name: "Someone else's")
-          create(role == "buyer" ? :seller : :buyer, company: company, name: "Other role")
+        # Master data, so the list is not cut down to one company's own.
+        it "returns every record of this role, whatever company is being worked on" do
+          mine = create(factory, name: "Mine")
+          theirs = create(factory, name: "Someone else's")
+          create(role == "buyer" ? :seller : :buyer, name: "Other role")
 
-          get path, params: { company_id: company.id }
+          get path
 
           expect(response).to have_http_status(:ok)
-          expect(json.map { |p| p["name"] }).to eq(["Mine"])
-          expect(json.first["id"]).to eq(mine.id)
+          expect(json.map { |p| p["id"] }).to contain_exactly(mine.id, theirs.id)
         end
 
-        it "returns an empty list for a company with none" do
-          get path, params: { company_id: create(:company).id }
+        it "returns an empty list when there are none" do
+          get path
 
           expect(response).to have_http_status(:ok)
           expect(json).to eq([])
         end
 
         it "sorts by name" do
-          create(factory, company: company, name: "Zebra Traders")
-          create(factory, company: company, name: "Ajanta Supplies")
+          create(factory, name: "Zebra Traders")
+          create(factory, name: "Ajanta Supplies")
 
-          get path, params: { company_id: company.id }
+          get path
 
           expect(json.map { |p| p["name"] }).to eq(["Ajanta Supplies", "Zebra Traders"])
         end
@@ -74,7 +71,6 @@ RSpec.describe "Api::V1 buyers and sellers" do
 
           expect(response).to have_http_status(:created)
           expect(json["name"]).to eq("Sundar Enterprises")
-          expect(json["company_id"]).to eq(company.id)
           expect(json["bank_accounts"].first["ifsc_code"]).to eq("UTIB0000123")
         end
 
@@ -115,19 +111,11 @@ RSpec.describe "Api::V1 buyers and sellers" do
           expect(json["errors"]).to have_key("bank_accounts")
         end
 
-        it "requires a company" do
-          params = valid_params.deep_merge(role => { company_id: nil })
-
-          post path, params: params, as: :json
-
-          expect(response).to have_http_status(:unprocessable_content)
-          expect(json["errors"]).to have_key("company")
-        end
       end
 
       describe "PATCH update" do
         it "updates attributes and nested banks in one call" do
-          record = create(factory, company: company, name: "Before", bank_account_count: 2)
+          record = create(factory, name: "Before", bank_account_count: 2)
           kept, removed = record.bank_accounts.to_a
 
           patch "#{path}/#{record.id}", params: {
@@ -148,7 +136,7 @@ RSpec.describe "Api::V1 buyers and sellers" do
         end
 
         it "refuses to remove the last bank account" do
-          record = create(factory, company: company, bank_account_count: 1)
+          record = create(factory, bank_account_count: 1)
           account = record.bank_accounts.first
 
           patch "#{path}/#{record.id}", params: {
@@ -160,7 +148,7 @@ RSpec.describe "Api::V1 buyers and sellers" do
         end
 
         it "404s for an id belonging to the other role" do
-          other = create(role == "buyer" ? :seller : :buyer, company: company)
+          other = create(role == "buyer" ? :seller : :buyer)
 
           patch "#{path}/#{other.id}", params: { role => { name: "Nope" } }, as: :json
 
@@ -171,7 +159,7 @@ RSpec.describe "Api::V1 buyers and sellers" do
 
       describe "DELETE destroy" do
         it "deletes the record and its bank accounts" do
-          record = create(factory, company: company, bank_account_count: 2)
+          record = create(factory, bank_account_count: 2)
 
           expect { delete "#{path}/#{record.id}", as: :json }
             .to change(model, :count).by(-1)
@@ -190,10 +178,8 @@ RSpec.describe "Api::V1 buyers and sellers" do
 
   # Brokerage belongs to the seller side of the shared controller.
   describe "a seller's brokerage basis" do
-    let(:company) { create(:company) }
-
     it "is stored and returned" do
-      seller = create(:seller, company: company)
+      seller = create(:seller)
 
       patch "/api/v1/sellers/#{seller.id}",
             params: { seller: { brokerage_basis: "taxable_value" } }, as: :json
@@ -205,7 +191,7 @@ RSpec.describe "Api::V1 buyers and sellers" do
 
     # The form posts the whole record back, banks and all, not just the dropdown.
     it "is stored when the whole form is sent back" do
-      seller = create(:seller, company: company)
+      seller = create(:seller)
       account = seller.bank_accounts.first
 
       patch "/api/v1/sellers/#{seller.id}", params: {
@@ -213,8 +199,7 @@ RSpec.describe "Api::V1 buyers and sellers" do
           name: seller.name, address: seller.address, email: seller.email,
           phone_no: seller.phone_no, pan: seller.pan, gst_registered: false, gst_no: "",
           trade_license_no: "", food_license_no: "", brokerage_basis: "amount",
-          bank_accounts_attributes: [{ id: account.id, bank_name: account.bank_name }],
-          company_id: company.id
+          bank_accounts_attributes: [{ id: account.id, bank_name: account.bank_name }]
         }
       }, as: :json
 
@@ -223,7 +208,7 @@ RSpec.describe "Api::V1 buyers and sellers" do
     end
 
     it "rejects a figure the sauda does not have" do
-      seller = create(:seller, company: company)
+      seller = create(:seller)
 
       patch "/api/v1/sellers/#{seller.id}",
             params: { seller: { brokerage_basis: "gst_amt" } }, as: :json
@@ -233,21 +218,23 @@ RSpec.describe "Api::V1 buyers and sellers" do
     end
 
     it "is not offered to buyers" do
-      buyer = create(:buyer, company: company)
+      buyer = create(:buyer)
 
-      get "/api/v1/buyers", params: { company_id: company.id }
+      get "/api/v1/buyers"
 
       expect(json.first["id"]).to eq(buyer.id)
       expect(json.first).not_to have_key("brokerage_basis")
     end
   end
 
-  it "removes a company's buyers and sellers along with it" do
+  # They outlive the company, which is the point of keeping them centrally:
+  # the next company starts with the same book of buyers and sellers.
+  it "leaves the buyers and sellers behind when a company is deleted" do
     company = create(:company)
-    create(:buyer, company: company)
-    create(:seller, company: company)
+    create(:buyer)
+    create(:seller)
 
     expect { delete "/api/v1/companies/#{company.id}", as: :json }
-      .to change(Party, :count).by(-2)
+      .not_to change(Party, :count)
   end
 end

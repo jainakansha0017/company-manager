@@ -167,7 +167,7 @@ export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNav
   useEffect(() => {
     let current = true;
 
-    Promise.all([listParties("seller", companyId), listParties("buyer", companyId)])
+    Promise.all([listParties("seller"), listParties("buyer")])
       .then(([sellers, buyerRecords]) => {
         if (!current) return;
         setSeller(sellers.find((entry) => String(entry.id) === String(sellerId)) ?? null);
@@ -181,7 +181,7 @@ export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNav
     return () => {
       current = false;
     };
-  }, [companyId, sellerId]);
+  }, [sellerId]);
 
   useEffect(() => {
     let current = true;
@@ -245,7 +245,7 @@ export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNav
       /* a full or disabled sessionStorage just means the draft is not kept */
     }
 
-    const params = new URLSearchParams({ company_id: companyId, return: formPath });
+    const params = new URLSearchParams({ return: formPath });
     if (name) params.set("name", name);
 
     onNavigate(`/buyers/new?${params}`);
@@ -398,7 +398,7 @@ export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNav
             onAddNew={addNewBuyer}
             addNewLabel="Add new buyer"
             placeholder="Type a buyer name…"
-            emptyMessage="No buyers for this company yet."
+            emptyMessage="No buyers on record yet."
           />
 
           <div className="field">

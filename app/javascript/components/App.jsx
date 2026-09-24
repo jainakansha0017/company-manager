@@ -21,9 +21,8 @@ function parseRoute(href) {
   if (party) {
     return {
       name: party[1],
-      // /sellers/new?company_id=3&name=Acme&return=/companies/3/sauda-register
+      // /sellers/new?name=Acme&return=/companies/3/sauda-register
       startNew: Boolean(party[2]),
-      initialCompanyId: query.get("company_id") ?? "",
       prefillName: query.get("name") ?? "",
       returnTo: query.get("return") ?? null,
     };
@@ -161,10 +160,7 @@ export default function App() {
           <PartyPage
             key={`${route.name}${route.startNew ? "-new" : ""}`}
             role={route.name === "buyers" ? "buyer" : "seller"}
-            companies={companies}
-            companiesLoading={loading}
             startNew={route.startNew}
-            initialCompanyId={route.initialCompanyId}
             prefillName={route.prefillName}
             returnTo={route.returnTo}
             onNavigate={navigate}

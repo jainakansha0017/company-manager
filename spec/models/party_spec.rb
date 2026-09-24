@@ -12,8 +12,10 @@ RSpec.describe Party do
     expect(Seller.all).to eq([seller])
   end
 
-  it "requires a company" do
-    expect(build(:buyer, company: nil)).not_to be_valid
+  # Master data: a firm is recorded once, not once per company dealing with it.
+  it "belongs to no company" do
+    expect(Party.column_names).not_to include("company_id")
+    expect(Party.reflect_on_association(:company)).to be_nil
   end
 
   it "requires at least one bank account" do
@@ -47,25 +49,18 @@ RSpec.describe Party do
   end
 
   describe "PAN uniqueness" do
-    it "rejects the same PAN twice for one company in the same role" do
-      buyer = create(:buyer, pan: "AAAAA1111A")
-      duplicate = build(:buyer, company: buyer.company, pan: "AAAAA1111A")
+    it "rejects the same PAN twice in the same role" do
+      create(:buyer, pan: "AAAAA1111A")
+      duplicate = build(:buyer, pan: "AAAAA1111A")
 
       expect(duplicate).not_to be_valid
       expect(duplicate.errors[:pan]).to include("has already been taken")
     end
 
-    it "allows the same PAN for a different company" do
-      buyer = create(:buyer, pan: "BBBBB2222B")
-      expect(build(:buyer, pan: "BBBBB2222B")).to be_valid
-      expect(buyer.reload).to be_persisted
-    end
+    it "allows one firm to be both a buyer and a seller" do
+      create(:buyer, pan: "CCCCC3333C")
 
-    it "allows one entity to be both a buyer and a seller for the same company" do
-      buyer = create(:buyer, pan: "CCCCC3333C")
-      seller = build(:seller, company: buyer.company, pan: "CCCCC3333C")
-
-      expect(seller).to be_valid
+      expect(build(:seller, pan: "CCCCC3333C")).to be_valid
     end
   end
 

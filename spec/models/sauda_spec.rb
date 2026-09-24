@@ -1,7 +1,7 @@
 require "rails_helper"
 
 RSpec.describe Sauda do
-  it "is valid with a company, one of its sellers and buyers, and a mark" do
+  it "is valid with a company, a seller, a buyer and a mark" do
     expect(build(:sauda)).to be_valid
   end
 
@@ -33,27 +33,8 @@ RSpec.describe Sauda do
     expect(sauda.errors[:sauda_date]).to be_present
   end
 
-  # A sauda is struck between a company and its own seller; pairing it with
-  # another company's seller would leak data across companies.
-  it "rejects a seller belonging to a different company" do
-    sauda = build(:sauda, seller: create(:seller))
-
-    expect(sauda).not_to be_valid
-    expect(sauda.errors[:seller]).to include("does not belong to this company")
-  end
-
-  it "rejects a buyer belonging to a different company" do
-    sauda = build(:sauda, buyer: create(:buyer))
-
-    expect(sauda).not_to be_valid
-    expect(sauda.errors[:buyer]).to include("does not belong to this company")
-  end
-
   it "only accepts sellers, not buyers" do
-    company = create(:company)
-    buyer = create(:buyer, company: company)
-
-    expect { create(:sauda, company: company, seller: buyer) }
+    expect { create(:sauda, seller: create(:buyer)) }
       .to raise_error(ActiveRecord::AssociationTypeMismatch)
   end
 
@@ -176,9 +157,7 @@ RSpec.describe Sauda do
       # agreed with them: 100,000 on the goods, 97,500 left after the discount.
       def sauda_for(basis)
         seller = create(:seller, brokerage_basis: basis)
-        sauda_worth(100_000, company: seller.company, seller: seller,
-                             buyer: create(:buyer, company: seller.company),
-                             discount_percent: 2.5)
+        sauda_worth(100_000, seller: seller, discount_percent: 2.5)
       end
 
       it "takes one per cent of the amount" do
@@ -220,10 +199,8 @@ RSpec.describe Sauda do
 
   describe ".ordered" do
     it "lists the newest sauda date first" do
-      company = create(:company)
-      seller = create(:seller, company: company)
-      older = create(:sauda, company: company, seller: seller, sauda_date: 2.days.ago.to_date)
-      newer = create(:sauda, company: company, seller: seller, sauda_date: Date.current)
+      older = create(:sauda, sauda_date: 2.days.ago.to_date)
+      newer = create(:sauda, sauda_date: Date.current)
 
       expect(described_class.ordered).to eq([newer, older])
     end

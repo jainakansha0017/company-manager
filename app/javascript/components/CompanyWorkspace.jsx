@@ -99,7 +99,6 @@ export default function CompanyWorkspace({
       ) : active === "sauda-register" ? (
         <SaudaRegister
           key={companyId}
-          company={company}
           companyId={companyId}
           sellerId={sellerId}
           sellerJustAdded={sellerJustAdded}

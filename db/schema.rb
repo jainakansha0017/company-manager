@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_23_160000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_24_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -56,7 +56,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_23_160000) do
 
   create_table "parties", force: :cascade do |t|
     t.string "type", null: false
-    t.bigint "company_id", null: false
     t.string "name", null: false
     t.text "address"
     t.string "email"
@@ -69,10 +68,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_23_160000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "brokerage_basis"
-    t.index ["company_id", "type", "gst_no"], name: "index_parties_on_company_type_gst_no", unique: true
-    t.index ["company_id", "type", "name"], name: "index_parties_on_company_id_and_type_and_name"
-    t.index ["company_id", "type", "pan"], name: "index_parties_on_company_type_pan", unique: true
-    t.index ["company_id"], name: "index_parties_on_company_id"
+    t.index ["type", "gst_no"], name: "index_parties_on_type_and_gst_no", unique: true
+    t.index ["type", "name"], name: "index_parties_on_type_and_name"
+    t.index ["type", "pan"], name: "index_parties_on_type_and_pan", unique: true
   end
 
   create_table "sauda_grades", force: :cascade do |t|
@@ -136,7 +134,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_23_160000) do
   end
 
   add_foreign_key "marks", "parties", column: "seller_id"
-  add_foreign_key "parties", "companies"
   add_foreign_key "sauda_grades", "sauda_marks"
   add_foreign_key "sauda_marks", "marks"
   add_foreign_key "sauda_marks", "saudas"

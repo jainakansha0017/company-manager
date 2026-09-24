@@ -3,8 +3,8 @@ require "rails_helper"
 RSpec.describe "Api::V1 saudas" do
   let(:json) { JSON.parse(response.body) }
   let(:company) { create(:company) }
-  let(:seller) { create(:seller, company: company) }
-  let(:buyer) { create(:buyer, company: company) }
+  let(:seller) { create(:seller) }
+  let(:buyer) { create(:buyer) }
 
   # The API is closed to anyone not signed in; sessions_spec covers that side.
   before { sign_in }
@@ -21,7 +21,7 @@ RSpec.describe "Api::V1 saudas" do
     end
 
     it "does not leak saudas belonging to another seller" do
-      other_seller = create(:seller, company: company)
+      other_seller = create(:seller)
       create(:sauda, company: company, seller: other_seller)
 
       get "/api/v1/saudas", params: { company_id: company.id, seller_id: seller.id }

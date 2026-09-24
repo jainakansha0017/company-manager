@@ -6,8 +6,8 @@ export default function PartyList({ parties, loading, roleLabel, onEdit, onDelet
   if (parties.length === 0) {
     return (
       <p className="muted">
-        No {roleLabel.toLowerCase()}s for this company yet. Use “Add New {roleLabel}” to
-        create the first one.
+        No {roleLabel.toLowerCase()}s yet. Use “Add New {roleLabel}” to create the
+        first one.
       </p>
     );
   }

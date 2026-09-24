@@ -5,7 +5,6 @@ FactoryBot.define do
       bank_account_count { 1 }
     end
 
-    company
     sequence(:name) { |n| "Trading Partner #{n}" }
     address { "7 Camac Street, Kolkata 700017" }
     sequence(:email) { |n| "contact#{n}@partner.test" }
