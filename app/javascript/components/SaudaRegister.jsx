@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { deleteSauda, listParties, listSaudas } from "../lib/api";
+import { deleteSauda, listParties, listSaudas, saudaRegisterUrl } from "../lib/api";
 import Combobox from "./Combobox";
 import SaudaList from "./SaudaList";
 
@@ -84,6 +84,11 @@ export default function SaudaRegister({
     onNavigate(`/sellers/new?${params}`);
   };
 
+  // A download leaves the page where it is, so the menu has to be shut by hand.
+  const closeDropdown = (event) => {
+    event.currentTarget.closest("details").open = false;
+  };
+
   const addNewSauda = () =>
     onNavigate(`/companies/${companyId}/sauda-register/new?seller_id=${selectedId}`);
 
@@ -124,9 +129,37 @@ export default function SaudaRegister({
       <div className="panel__header">
         <h2>Sauda Register</h2>
         {selected && (
-          <button type="button" className="button button--primary" onClick={addNewSauda}>
-            Add New Sauda
-          </button>
+          <div className="panel__actions">
+            {/* A native disclosure rather than a menu built from state: the open
+                and closed of it, and the keyboard, are the browser's job. */}
+            <details className="dropdown">
+              <summary className="button">Export</summary>
+              <ul className="dropdown__menu" onClick={closeDropdown}>
+                <li>
+                  <a
+                    className="dropdown__item"
+                    href={saudaRegisterUrl(companyId, selectedId, "pdf")}
+                    download
+                  >
+                    PDF
+                  </a>
+                </li>
+                <li>
+                  <a
+                    className="dropdown__item"
+                    href={saudaRegisterUrl(companyId, selectedId, "xlsx")}
+                    download
+                  >
+                    Excel
+                  </a>
+                </li>
+              </ul>
+            </details>
+
+            <button type="button" className="button button--primary" onClick={addNewSauda}>
+              Add New Sauda
+            </button>
+          </div>
         )}
       </div>
 

@@ -94,6 +94,14 @@ export const listSaudas = (companyId, sellerId) =>
       `&seller_id=${encodeURIComponent(sellerId)}`,
   );
 
+// The same register as a file. A plain link rather than a fetch, so the browser
+// saves it itself; the session cookie rides along and keeps it behind the login.
+export const saudaRegisterUrl = (companyId, sellerId, format) => {
+  const params = new URLSearchParams({ company_id: companyId, seller_id: sellerId });
+
+  return `/api/v1/saudas.${format}?${params}`;
+};
+
 // One sauda on its own, for the edit form.
 export const getSauda = (id) => request(`/api/v1/saudas/${id}`);
 

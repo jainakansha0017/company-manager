@@ -120,6 +120,54 @@ body {
   margin: 0;
 }
 
+.panel__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* A <details> used as a drop-down: the summary is the button, the list is the
+   menu it reveals. */
+.dropdown {
+  position: relative;
+}
+
+.dropdown > summary {
+  display: inline-block;
+  list-style: none;
+}
+
+.dropdown > summary::-webkit-details-marker {
+  display: none;
+}
+
+.dropdown__menu {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 140px;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.dropdown__item {
+  display: block;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.dropdown__item:hover {
+  background: #eef3fd;
+}
+
 .combobox {
   display: flex;
   flex-direction: column;

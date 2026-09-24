@@ -63,6 +63,37 @@ RSpec.describe "Api::V1 saudas" do
     end
   end
 
+  # The same register, downloaded. What goes in the file is exercised in
+  # spec/exports; this is about getting it out of the endpoint.
+  describe "downloading the register" do
+    before { create(:sauda, company: company, seller: seller, buyer: buyer) }
+
+    it "hands back a spreadsheet" do
+      get "/api/v1/saudas.xlsx", params: { company_id: company.id, seller_id: seller.id }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type)
+        .to eq("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+      expect(response.headers["Content-Disposition"])
+        .to include("sauda-register-#{seller.name.parameterize}")
+      expect(response.body).to start_with("PK")
+    end
+
+    it "hands back a PDF" do
+      get "/api/v1/saudas.pdf", params: { company_id: company.id, seller_id: seller.id }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq("application/pdf")
+      expect(response.body).to start_with("%PDF")
+    end
+
+    it "404s when the company or the seller is not on record" do
+      get "/api/v1/saudas.pdf", params: { company_id: 0, seller_id: seller.id }
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
   describe "POST /api/v1/saudas" do
     let(:mark) { create(:mark, seller: seller) }
 

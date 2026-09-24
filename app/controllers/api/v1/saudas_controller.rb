@@ -6,12 +6,17 @@ module Api
       before_action :set_sauda, only: %i[show update destroy]
 
       # Always read through the register: /api/v1/saudas?company_id=1&seller_id=2
+      # The same register downloads as a file at .xlsx and .pdf.
       def index
         scope = Sauda.where(company_id: params[:company_id], seller_id: params[:seller_id])
                      .includes(:buyer, sauda_marks: %i[mark sauda_grades])
                      .ordered
 
-        render json: scope.map { |sauda| serialize(sauda) }
+        respond_to do |format|
+          format.json { render json: scope.map { |sauda| serialize(sauda) } }
+          format.xlsx { send_register(scope, :xlsx) }
+          format.pdf { send_register(scope, :pdf) }
+        end
       end
 
       # One sauda on its own, so the edit form works from a pasted link.
@@ -43,6 +48,20 @@ module Api
       end
 
       private
+
+      # A download is a plain GET carrying the session cookie, so it is behind
+      # the same login as the JSON and needs no CSRF token of its own.
+      def send_register(scope, extension)
+        export = SaudaRegisterExport.new(scope.to_a,
+                                         company: Company.find(params[:company_id]),
+                                         seller: Seller.find(params[:seller_id]))
+
+        send_data extension == :xlsx ? export.to_xlsx : export.to_pdf,
+                  filename: export.filename(extension),
+                  type: Mime[extension].to_s
+      rescue ActiveRecord::RecordNotFound
+        head :not_found
+      end
 
       def set_sauda
         @sauda = Sauda.includes(:buyer, sauda_marks: %i[mark sauda_grades]).find(params[:id])

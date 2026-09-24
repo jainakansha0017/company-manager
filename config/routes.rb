@@ -12,7 +12,10 @@ Rails.application.routes.draw do
       resources :companies, only: %i[index create update destroy]
       resources :buyers, only: %i[index create update destroy]
       resources :sellers, only: %i[index create update destroy]
-      resources :saudas, only: %i[index show create update destroy]
+      # The register also downloads, at .xlsx and .pdf. An extension in the path
+      # wins over the default, so asking for neither still gets the JSON.
+      resources :saudas, only: %i[index show create update destroy],
+                         defaults: { format: :json }
       resources :marks, only: %i[index create]
     end
   end

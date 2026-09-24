@@ -38,6 +38,17 @@ gem "erb", "~> 2.2"
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 gem "bcrypt", "~> 3.1.7"
 
+# The two download formats of the sauda register.
+gem "caxlsx"
+gem "prawn", "~> 2.5"
+gem "prawn-table"
+
+# caxlsx zips the workbook with rubyzip, and rubyzip 3 stamps every entry
+# "version needed to extract: 4.5" — the Zip64 marker. Excel and LibreOffice
+# both refuse to open an .xlsx whose entries claim Zip64, so the download comes
+# out corrupt. rubyzip 2 writes the 2.0 marker they expect.
+gem "rubyzip", "~> 2.3"
+
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 
