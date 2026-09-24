@@ -24,6 +24,11 @@ RSpec.describe Party do
     expect(Party.column_names).not_to include("financial_year")
   end
 
+  it "does not require an email or a phone number either" do
+    expect(build(:buyer, email: nil, phone_no: nil)).to be_valid
+    expect(build(:seller, email: "", phone_no: "")).to be_valid
+  end
+
   it "normalises PAN and email the same way a company does" do
     buyer = create(:buyer, pan: "  zxcvb1234n ", email: "  Contact@Partner.TEST ")
 

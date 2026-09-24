@@ -5,7 +5,7 @@ RSpec.describe Company, type: :model do
     expect(build(:company)).to be_valid
   end
 
-  %i[name address email phone_no financial_year].each do |attribute|
+  %i[name address financial_year].each do |attribute|
     it "requires #{attribute}" do
       company = build(:company, attribute => nil)
       expect(company).not_to be_valid
@@ -13,8 +13,21 @@ RSpec.describe Company, type: :model do
     end
   end
 
+  # Not every company on the books has been given an address or a number to
+  # reach it on, and one should not have to be invented to save the record.
+  %i[email phone_no].each do |attribute|
+    it "does not require #{attribute}" do
+      expect(build(:company, attribute => nil)).to be_valid
+      expect(build(:company, attribute => "")).to be_valid
+    end
+  end
+
   it "rejects a malformed email" do
     expect(build(:company, email: "not-an-email")).not_to be_valid
+  end
+
+  it "rejects a malformed phone number" do
+    expect(build(:company, phone_no: "call me")).not_to be_valid
   end
 
   it "rejects a financial year that is not in YYYY-YY form" do

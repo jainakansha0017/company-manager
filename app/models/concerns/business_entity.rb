@@ -20,10 +20,13 @@ module BusinessEntity
 
     validates :name, presence: true, length: { maximum: 255 }
     validates :address, presence: true
-    validates :email, presence: true,
-                      format: { with: URI::MailTo::EMAIL_REGEXP, message: "is not a valid email address" }
-    validates :phone_no, presence: true,
-                         format: { with: PHONE_FORMAT, message: "is not a valid phone number" }
+    # Both are optional: plenty of the parties in this trade are dealt with over
+    # the phone or in person, and a record should not be unsaveable for want of
+    # a detail nobody has. Still checked when one is given, so a typo is caught.
+    validates :email, format: { with: URI::MailTo::EMAIL_REGEXP, message: "is not a valid email address" },
+                      allow_blank: true
+    validates :phone_no, format: { with: PHONE_FORMAT, message: "is not a valid phone number" },
+                         allow_blank: true
     validates :gst_registered, inclusion: { in: [true, false] }
     validates :pan, format: { with: PAN_FORMAT, message: "must be 10 characters, e.g. ABCDE1234F" },
                     allow_nil: true

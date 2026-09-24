@@ -149,8 +149,8 @@ export default function EntityForm({
         <legend>Details</legend>
         <div className="grid">
           {field("name", "Name", { required: true })}
-          {field("email", "Email", { type: "email", required: true })}
-          {field("phone_no", "Phone no.", { required: true })}
+          {field("email", "Email", { type: "email" })}
+          {field("phone_no", "Phone no.")}
           {includeFinancialYear &&
             field("financial_year", "Financial year", {
               required: true,
