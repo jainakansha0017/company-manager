@@ -225,7 +225,8 @@ RSpec.describe Sauda do
         .to contain_exactly(first_day, last_day)
     end
 
-    # The company's own financial year is still recorded the short way.
+    # Only the four digits it starts with are read, so a year typed the short
+    # way still finds the same saudas.
     it "reads the year written the short way the same" do
       sauda = create(:sauda, sauda_date: Date.new(2025, 6, 1))
 

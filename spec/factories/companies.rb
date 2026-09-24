@@ -12,7 +12,7 @@ FactoryBot.define do
     gst_registered { false }
     trade_license_no { "TL-2025-0091" }
     food_license_no { "FSSAI-11223344556677" }
-    financial_year { "2025-26" }
+    financial_year { "2025-2026" }
 
     after(:build) do |company, evaluator|
       evaluator.bank_account_count.times do

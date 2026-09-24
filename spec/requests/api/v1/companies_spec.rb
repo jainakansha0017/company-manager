@@ -39,7 +39,7 @@ RSpec.describe "Api::V1::Companies", type: :request do
           gst_no: "19ABCDE1234F1Z5",
           trade_license_no: "TL-2025-0091",
           food_license_no: "FSSAI-11223344556677",
-          financial_year: "2025-26",
+          financial_year: "2025-2026",
           bank_accounts_attributes: [
             { bank_name: "HDFC Bank", branch: "Park Street", account_number: "50100000001",
               ifsc_code: "HDFC0001234", account_type: "Current" },
@@ -132,11 +132,11 @@ RSpec.describe "Api::V1::Companies", type: :request do
 
     it "updates the company attributes" do
       patch "/api/v1/companies/#{company.id}",
-            params: { company: { name: "New Name", financial_year: "2026-27" } }, as: :json
+            params: { company: { name: "New Name", financial_year: "2026-2027" } }, as: :json
 
       expect(response).to have_http_status(:ok)
       expect(json["name"]).to eq("New Name")
-      expect(company.reload.financial_year).to eq("2026-27")
+      expect(company.reload.financial_year).to eq("2026-2027")
     end
 
     it "updates an existing bank account in place" do

@@ -30,10 +30,29 @@ RSpec.describe Company, type: :model do
     expect(build(:company, phone_no: "call me")).not_to be_valid
   end
 
-  it "rejects a financial year that is not in YYYY-YY form" do
+  it "rejects a financial year that is not two years" do
     expect(build(:company, financial_year: "last year")).not_to be_valid
-    expect(build(:company, financial_year: "2025-26")).to be_valid
-    expect(build(:company, financial_year: "2025-2026")).to be_valid
+    expect(build(:company, financial_year: "2025")).not_to be_valid
+  end
+
+  # Stored the way the sauda register writes it, however it was typed.
+  describe "the financial year" do
+    def year_of(typed)
+      build(:company, financial_year: typed).tap(&:validate).financial_year
+    end
+
+    it "writes a year typed the short way out in full" do
+      expect(year_of("2025-26")).to eq("2025-2026")
+      expect(year_of("2025 - 26")).to eq("2025-2026")
+    end
+
+    it "leaves a year already written out in full alone" do
+      expect(year_of("2025-2026")).to eq("2025-2026")
+    end
+
+    it "takes the century from the year that is ending" do
+      expect(year_of("2099-00")).to eq("2099-2100")
+    end
   end
 
   describe "PAN" do

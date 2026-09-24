@@ -154,7 +154,7 @@ export default function EntityForm({
           {includeFinancialYear &&
             field("financial_year", "Financial year", {
               required: true,
-              placeholder: "2025-26",
+              placeholder: "2025-2026",
             })}
 
           {includeBrokerage && (
