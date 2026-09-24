@@ -200,6 +200,16 @@ export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNav
   const setField = (name) => (event) =>
     setValues((current) => ({ ...current, [name]: event.target.value }));
 
+  // The goods are going to the buyer, so their address is the destination in
+  // all but the odd case. Filled in on selection and still editable after.
+  // Clearing the buyer leaves it alone rather than wiping what is in the box.
+  const selectBuyer = (buyer) =>
+    setValues((current) => ({
+      ...current,
+      buyer_id: buyer ? buyer.id : null,
+      destination: buyer?.address ?? current.destination,
+    }));
+
   const updateLine = (index, patch) =>
     setLines((current) => current.map((line, i) => (i === index ? { ...line, ...patch } : line)));
 
@@ -384,9 +394,7 @@ export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNav
             label="Buyer"
             options={buyers}
             value={values.buyer_id}
-            onSelect={(buyer) =>
-              setValues((current) => ({ ...current, buyer_id: buyer ? buyer.id : null }))
-            }
+            onSelect={selectBuyer}
             onAddNew={addNewBuyer}
             addNewLabel="Add new buyer"
             placeholder="Type a buyer name…"
