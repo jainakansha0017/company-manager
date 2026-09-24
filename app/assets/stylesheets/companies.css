@@ -545,6 +545,13 @@ legend {
   color: var(--success);
 }
 
+/* Neither good news nor bad: an explanation of how you got here. */
+.alert--notice {
+  background: #eef3fd;
+  border: 1px solid #c7d8f5;
+  color: var(--text);
+}
+
 /* What the seller's register comes to, read before the rows rather than hunted
    for at the foot of them. The items wrap onto a second line in a narrow window
    instead of shrinking, since a squeezed figure is no use. */

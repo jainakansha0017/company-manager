@@ -3,7 +3,7 @@ import { logIn } from "../lib/api";
 
 // The whole app is behind this, so it is the only thing a signed-out visitor
 // ever sees. There is no sign-up link: accounts are made from the console.
-export default function LoginPage({ onSignedIn }) {
+export default function LoginPage({ notice, onSignedIn }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
@@ -32,6 +32,9 @@ export default function LoginPage({ onSignedIn }) {
     <form className="card login" onSubmit={handleSubmit} noValidate>
       <h1 className="login__heading">Company Manager</h1>
       <p className="login__intro muted">Sign in to continue.</p>
+
+      {/* Why you are looking at this form again, when you had not signed out. */}
+      {notice && !error && <p className="alert alert--notice">{notice}</p>}
 
       {error && (
         <div className="alert alert--error" role="alert">

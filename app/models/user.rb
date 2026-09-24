@@ -8,6 +8,12 @@ class User < ApplicationRecord
 
   has_secure_password
 
+  # The handle every open session hangs off. It goes into the cookie beside the
+  # user's id and is checked on every request, so regenerating it shuts every
+  # session at once — which is what signing in on a second device, or out on any
+  # of them, does. One device at a time, by design.
+  has_secure_token :session_token
+
   before_validation :normalise_email
 
   validates :name, presence: true, length: { maximum: 255 }

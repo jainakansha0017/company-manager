@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { getSession, listCompanies, logOut } from "../lib/api";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { getSession, listCompanies, logOut, setUnauthorizedHandler } from "../lib/api";
 import HomePage from "./HomePage";
 import CompaniesPage from "./CompaniesPage";
 import CompanyWorkspace, { DEFAULT_TAB } from "./CompanyWorkspace";
@@ -65,6 +65,10 @@ export default function App() {
   // before the answer arrives flashes it at someone who is already signed in.
   const [currentUser, setCurrentUser] = useState(undefined);
 
+  // Why the login form is being shown, when it is not simply that nobody has
+  // signed in yet.
+  const [endedSession, setEndedSession] = useState(false);
+
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -75,10 +79,9 @@ export default function App() {
       setCompanies(await listCompanies());
       setError(null);
     } catch (failure) {
-      // The session can lapse while the tab sits open. Drop back to the login
-      // form rather than showing a load error that a retry cannot fix.
-      if (failure.status === 401) setCurrentUser(null);
-      else setError("Could not load companies. Is the server running?");
+      // A 401 has already dropped the app to the login form; saying the list
+      // could not be loaded on top of that would only confuse.
+      if (failure.status !== 401) setError("Could not load companies. Is the server running?");
     } finally {
       setLoading(false);
     }
@@ -88,6 +91,26 @@ export default function App() {
     getSession()
       .then(setCurrentUser)
       .catch(() => setCurrentUser(null));
+  }, []);
+
+  // Read by the 401 handler below, which is registered once and so cannot see
+  // the state as it changes.
+  const signedIn = useRef(false);
+  useEffect(() => {
+    signedIn.current = Boolean(currentUser);
+  }, [currentUser]);
+
+  // Only worth saying something when a session was actually lost. A 401 while
+  // signed out is the ordinary answer to "who am I?" and to a wrong password.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      if (!signedIn.current) return;
+
+      setCurrentUser(null);
+      setCompanies([]);
+      setError(null);
+      setEndedSession(true);
+    });
   }, []);
 
   // Companies are only fetched once there is someone to fetch them for, and
@@ -194,7 +217,18 @@ export default function App() {
   if (currentUser === null) {
     return (
       <div className="page">
-        <LoginPage onSignedIn={setCurrentUser} />
+        <LoginPage
+          notice={
+            endedSession
+              ? "You were signed out after fifteen minutes without activity, or because " +
+                "this account was signed in somewhere else."
+              : null
+          }
+          onSignedIn={(user) => {
+            setEndedSession(false);
+            setCurrentUser(user);
+          }}
+        />
       </div>
     );
   }

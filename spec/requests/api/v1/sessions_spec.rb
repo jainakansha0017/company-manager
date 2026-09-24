@@ -108,6 +108,73 @@ RSpec.describe "Api::V1::Sessions", type: :request do
 
       expect(response).to have_http_status(:unauthorized)
     end
+
+    # The browser that signed out has its cookie cleared anyway; rotating the
+    # token is what reaches the ones that are not asking.
+    it "ends the sessions open on other devices too" do
+      sign_in(user)
+
+      expect { sign_out }.to change { user.reload.session_token }
+    end
+  end
+
+  # One device at a time: the session cookie carries the user's session token,
+  # and only the newest token is any good.
+  describe "a session ended somewhere else" do
+    it "stops being signed in once the same account signs in elsewhere" do
+      sign_in(user)
+      user.regenerate_session_token
+
+      get "/api/v1/session"
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "shuts the API to it as well" do
+      sign_in(user)
+      user.regenerate_session_token
+
+      get "/api/v1/companies"
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "gives the browser that just signed in a working session" do
+      sign_in(user)
+
+      get "/api/v1/session"
+
+      expect(response).to have_http_status(:ok)
+    end
+  end
+
+  # Fifteen minutes from the last request, not from signing in, so an afternoon
+  # of work is never interrupted.
+  describe "sitting idle" do
+    it "signs out after fifteen minutes of nothing" do
+      sign_in(user)
+
+      travel 16.minutes do
+        get "/api/v1/session"
+      end
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "stays signed in while the register is being worked on" do
+      sign_in(user)
+
+      travel 10.minutes do
+        get "/api/v1/session"
+        expect(response).to have_http_status(:ok)
+      end
+
+      travel 18.minutes do
+        get "/api/v1/session"
+      end
+
+      expect(response).to have_http_status(:ok)
+    end
   end
 
   describe "guarding the API" do

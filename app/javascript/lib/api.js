@@ -10,6 +10,16 @@ const setCsrfToken = (token) => {
   if (meta && token) meta.content = token;
 };
 
+// The session lapses after fifteen minutes of idleness, and signing in on
+// another device ends it outright, so any request can come back a 401. Whichever
+// one notices first says so here, and the app drops to the login form rather
+// than showing a load error that a retry cannot fix.
+let onUnauthorized = () => {};
+
+export const setUnauthorizedHandler = (handler) => {
+  onUnauthorized = handler;
+};
+
 async function request(path, options = {}) {
   const response = await fetch(path, {
     ...options,
@@ -24,6 +34,8 @@ async function request(path, options = {}) {
   const body = response.status === 204 ? null : await response.json();
 
   if (!response.ok) {
+    if (response.status === 401) onUnauthorized();
+
     const error = new Error("Request failed");
     error.status = response.status;
     error.errors = body?.errors || {};
