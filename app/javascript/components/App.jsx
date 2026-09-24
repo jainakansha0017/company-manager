@@ -96,17 +96,6 @@ export default function App() {
     if (currentUser) loadCompanies();
   }, [currentUser, loadCompanies]);
 
-  const signOut = useCallback(async () => {
-    try {
-      await logOut();
-    } finally {
-      // Whatever the server said, this browser is done with the session.
-      setCurrentUser(null);
-      setCompanies([]);
-      setError(null);
-    }
-  }, []);
-
   useEffect(() => {
     const onPopState = () => setRoute(parseRoute(currentHref()));
     window.addEventListener("popstate", onPopState);
@@ -118,6 +107,20 @@ export default function App() {
     setRoute(parseRoute(path));
     window.scrollTo(0, 0);
   }, []);
+
+  const signOut = useCallback(async () => {
+    try {
+      await logOut();
+    } finally {
+      // Whatever the server said, this browser is done with the session.
+      setCurrentUser(null);
+      setCompanies([]);
+      setError(null);
+      // Back to the front door, so signing in again does not drop whoever comes
+      // next onto the page the last one happened to leave open.
+      navigate("/");
+    }
+  }, [navigate]);
 
   const activeNav = NAV_FOR[route.name] ?? route.name;
 
