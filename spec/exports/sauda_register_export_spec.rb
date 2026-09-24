@@ -21,8 +21,9 @@ RSpec.describe SaudaRegisterExport do
     sauda.tap(&:save!)
   end
 
-  def export(saudas)
-    described_class.new(Array(saudas), company: company, seller: seller)
+  def export(saudas, financial_year: nil)
+    described_class.new(Array(saudas), company: company, seller: seller,
+                                       financial_year: financial_year)
   end
 
   # Reads the sheet back out of the workbook, a row of cell values at a time.
@@ -129,6 +130,18 @@ RSpec.describe SaudaRegisterExport do
       expect(export([]).filename(:xlsx))
         .to eq("sauda-register-ganges-rice-depot-#{Date.current.iso8601}.xlsx")
     end
+
+    it "names it after the financial year when it covers one" do
+      expect(export([], financial_year: "2025-2026").filename(:pdf))
+        .to eq("sauda-register-ganges-rice-depot-2025-2026.pdf")
+    end
+  end
+
+  # A page of one year's figures must not read as the seller's whole register.
+  it "says which financial year it covers" do
+    rows = sheet_rows(export(sauda_worth_100k, financial_year: "2025-2026").to_xlsx)
+
+    expect(rows[1]).to eq(["Sauda register for Ganges Rice Depot, 2025-2026"])
   end
 
   # The PDF spells its figures out itself, so the grouping lives here.

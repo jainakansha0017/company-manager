@@ -25,6 +25,26 @@ class Sauda < ApplicationRecord
 
   scope :ordered, -> { order(sauda_date: :desc, id: :desc) }
 
+  # "2025-2026" is 1 April 2025 to 31 March 2026. The short "2025-26" is read the
+  # same way, since only the four digits it starts with are used. Anything that is
+  # not a year narrows nothing, which is what "All years" asks for.
+  scope :in_financial_year, lambda { |label|
+    start = label.to_s[/\A\d{4}/]
+    next all if start.blank?
+
+    where(sauda_date: Date.new(start.to_i, 4, 1)..Date.new(start.to_i + 1, 3, 31))
+  }
+
+  # Which financial year this sauda falls in, written out in full. India's runs
+  # April to March, so a sauda dated 12 May 2025 and one dated 3 February 2026 are
+  # both "2025-2026".
+  def financial_year
+    return if sauda_date.blank?
+
+    start = sauda_date.month < 4 ? sauda_date.year - 1 : sauda_date.year
+    "#{start}-#{start + 1}"
+  end
+
   private
 
   def live_marks

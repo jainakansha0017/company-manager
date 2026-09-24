@@ -26,16 +26,18 @@ class SaudaRegisterExport
     Column.new("Brokerage", :sauda, :money, ->(sauda, _) { sauda.brokerage_amt }, true)
   ].freeze
 
-  def initialize(saudas, company:, seller:)
+  def initialize(saudas, company:, seller:, financial_year: nil)
     @saudas = saudas
     @company = company
     @seller = seller
+    @financial_year = financial_year
   end
 
-  # Named after the seller and the day it was taken, so a folder of these does
-  # not need opening to tell them apart.
+  # Named after the year it covers when it covers one, so a folder of these
+  # does not need opening to tell them apart.
   def filename(extension)
-    "sauda-register-#{seller.name.parameterize}-#{Date.current.iso8601}.#{extension}"
+    covers = financial_year ? financial_year.tr(" ", "") : Date.current.iso8601
+    "sauda-register-#{seller.name.parameterize}-#{covers}.#{extension}"
   end
 
   def to_xlsx
@@ -44,7 +46,7 @@ class SaudaRegisterExport
       styles = xlsx_styles(package.workbook)
 
       sheet.add_row [company.name], style: styles[:title]
-      sheet.add_row ["Sauda register for #{seller.name}"]
+      sheet.add_row [subtitle]
       sheet.add_row []
       sheet.add_row COLUMNS.map(&:header), style: styles[:header]
 
@@ -62,7 +64,7 @@ class SaudaRegisterExport
     pdf = Prawn::Document.new(page_size: "A4", page_layout: :landscape, margin: 24)
 
     pdf.text company.name, size: 14, style: :bold
-    pdf.text "Sauda register for #{seller.name}", size: 10
+    pdf.text subtitle, size: 10
     pdf.move_down 10
 
     pdf.table(pdf_rows, header: true, width: pdf.bounds.width,
@@ -80,7 +82,15 @@ class SaudaRegisterExport
 
   private
 
-  attr_reader :saudas, :company, :seller
+  attr_reader :saudas, :company, :seller, :financial_year
+
+  # Says which year the figures below cover, so a printed page is not mistaken
+  # for the seller's whole register.
+  def subtitle
+    return "Sauda register for #{seller.name}" if financial_year.blank?
+
+    "Sauda register for #{seller.name}, #{financial_year}"
+  end
 
   # A row per mark, so a sauda with three marks is three rows deep, as on screen.
   # A sauda with no marks still gets its one row.

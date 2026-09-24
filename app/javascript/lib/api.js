@@ -96,8 +96,10 @@ export const listSaudas = (companyId, sellerId) =>
 
 // The same register as a file. A plain link rather than a fetch, so the browser
 // saves it itself; the session cookie rides along and keeps it behind the login.
-export const saudaRegisterUrl = (companyId, sellerId, format) => {
+// An empty financialYear leaves the file covering every year, as on screen.
+export const saudaRegisterUrl = (companyId, sellerId, format, financialYear = "") => {
   const params = new URLSearchParams({ company_id: companyId, seller_id: sellerId });
+  if (financialYear) params.set("financial_year", financialYear);
 
   return `/api/v1/saudas.${format}?${params}`;
 };

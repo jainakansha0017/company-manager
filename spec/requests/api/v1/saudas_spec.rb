@@ -46,8 +46,19 @@ RSpec.describe "Api::V1 saudas" do
         %w[id company_id seller_id buyer_id buyer_name sauda_no sauda_date bill_date
            tax_invoice_no destination transporter_name bilty_no bilty_date
            amount discount_percent total_tax_bill_amt gst_amt disc_amt taxable_value
-           brokerage_amt total_kg created_at sauda_marks]
+           brokerage_amt total_kg created_at financial_year sauda_marks]
       )
+    end
+
+    # The screen narrows to a year from what it already has, so the JSON is the
+    # whole register with each sauda's year on it.
+    it "tells the register which financial year each sauda falls in" do
+      create(:sauda, company: company, seller: seller, sauda_date: Date.new(2026, 3, 31))
+      create(:sauda, company: company, seller: seller, sauda_date: Date.new(2026, 4, 1))
+
+      get "/api/v1/saudas", params: { company_id: company.id, seller_id: seller.id }
+
+      expect(json.map { |sauda| sauda["financial_year"] }).to eq(["2026-2027", "2025-2026"])
     end
 
     it "nests each mark with its lot numbers and grades" do
@@ -85,6 +96,19 @@ RSpec.describe "Api::V1 saudas" do
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq("application/pdf")
       expect(response.body).to start_with("%PDF")
+    end
+
+    # A download is a fresh request with nothing loaded, so the year the screen
+    # is showing has to be narrowed to here.
+    it "covers only the financial year it is asked for" do
+      create(:sauda, company: company, seller: seller, sauda_date: Date.new(2024, 6, 1))
+
+      get "/api/v1/saudas.xlsx", params: { company_id: company.id, seller_id: seller.id,
+                                           financial_year: "2024-2025" }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.headers["Content-Disposition"])
+        .to include("sauda-register-#{seller.name.parameterize}-2024-2025.xlsx")
     end
 
     it "404s when the company or the seller is not on record" do

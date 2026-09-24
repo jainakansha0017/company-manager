@@ -168,6 +168,25 @@ body {
   background: #eef3fd;
 }
 
+/* What the register is narrowed by: the seller, and the financial year. */
+.filters {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.filters .combobox {
+  flex: 1 1 420px;
+  margin-bottom: 0;
+}
+
+.filters .field {
+  flex: 0 0 auto;
+  min-width: 150px;
+  margin-bottom: 0;
+}
+
 .combobox {
   display: flex;
   flex-direction: column;

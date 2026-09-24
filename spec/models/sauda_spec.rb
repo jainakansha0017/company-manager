@@ -197,6 +197,50 @@ RSpec.describe Sauda do
     end
   end
 
+  # India's financial year runs 1 April to 31 March.
+  describe "#financial_year" do
+    it "puts April onwards in the year that is starting" do
+      expect(build(:sauda, sauda_date: Date.new(2025, 4, 1)).financial_year).to eq("2025-2026")
+      expect(build(:sauda, sauda_date: Date.new(2025, 12, 31)).financial_year).to eq("2025-2026")
+    end
+
+    it "puts January to March in the year that is ending" do
+      expect(build(:sauda, sauda_date: Date.new(2026, 3, 31)).financial_year).to eq("2025-2026")
+      expect(build(:sauda, sauda_date: Date.new(2026, 4, 1)).financial_year).to eq("2026-2027")
+    end
+
+    it "writes both years out in full, so a century rolls over plainly" do
+      expect(build(:sauda, sauda_date: Date.new(2099, 6, 1)).financial_year).to eq("2099-2100")
+    end
+  end
+
+  describe ".in_financial_year" do
+    it "takes the saudas dated between one April and the next March" do
+      first_day = create(:sauda, sauda_date: Date.new(2025, 4, 1))
+      last_day = create(:sauda, sauda_date: Date.new(2026, 3, 31))
+      create(:sauda, sauda_date: Date.new(2025, 3, 31))
+      create(:sauda, sauda_date: Date.new(2026, 4, 1))
+
+      expect(described_class.in_financial_year("2025-2026"))
+        .to contain_exactly(first_day, last_day)
+    end
+
+    # The company's own financial year is still recorded the short way.
+    it "reads the year written the short way the same" do
+      sauda = create(:sauda, sauda_date: Date.new(2025, 6, 1))
+
+      expect(described_class.in_financial_year("2025-26")).to eq([sauda])
+    end
+
+    # What "All years" asks for.
+    it "narrows nothing when given no year" do
+      create(:sauda)
+
+      expect(described_class.in_financial_year("").count).to eq(1)
+      expect(described_class.in_financial_year(nil).count).to eq(1)
+    end
+  end
+
   describe ".ordered" do
     it "lists the newest sauda date first" do
       older = create(:sauda, sauda_date: 2.days.ago.to_date)

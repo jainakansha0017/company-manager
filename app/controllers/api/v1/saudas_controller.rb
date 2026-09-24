@@ -7,6 +7,11 @@ module Api
 
       # Always read through the register: /api/v1/saudas?company_id=1&seller_id=2
       # The same register downloads as a file at .xlsx and .pdf.
+      #
+      # The JSON is the seller's whole register: every sauda carries the
+      # financial year it falls in, and the screen narrows to one year from
+      # there without going back to the server. A download is a fresh request
+      # with nothing loaded, so `financial_year` narrows it here instead.
       def index
         scope = Sauda.where(company_id: params[:company_id], seller_id: params[:seller_id])
                      .includes(:buyer, sauda_marks: %i[mark sauda_grades])
@@ -52,9 +57,11 @@ module Api
       # A download is a plain GET carrying the session cookie, so it is behind
       # the same login as the JSON and needs no CSRF token of its own.
       def send_register(scope, extension)
-        export = SaudaRegisterExport.new(scope.to_a,
+        financial_year = params[:financial_year]
+        export = SaudaRegisterExport.new(scope.in_financial_year(financial_year).to_a,
                                          company: Company.find(params[:company_id]),
-                                         seller: Seller.find(params[:seller_id]))
+                                         seller: Seller.find(params[:seller_id]),
+                                         financial_year: financial_year.presence)
 
         send_data extension == :xlsx ? export.to_xlsx : export.to_pdf,
                   filename: export.filename(extension),
@@ -105,6 +112,9 @@ module Api
                    taxable_value brokerage_amt total_kg created_at]
         ).merge(
           "buyer_name" => sauda.buyer&.name,
+          # Worked out here rather than in the browser, so the rule for where
+          # April falls lives in one place.
+          "financial_year" => sauda.financial_year,
           "sauda_marks" => sauda.sauda_marks.map { |sauda_mark| serialize_mark(sauda_mark) }
         )
       end

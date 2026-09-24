@@ -1,7 +1,22 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { deleteSauda, listParties, listSaudas, saudaRegisterUrl } from "../lib/api";
 import Combobox from "./Combobox";
 import SaudaList from "./SaudaList";
+
+// What the year dropdown means when nothing is being narrowed to.
+const ALL_YEARS = "";
+
+// Years are matched on the four digits they start with, which is all that says
+// which financial year something falls in.
+const startYear = (year) => String(year ?? "").slice(0, 4);
+
+// India's financial year runs 1 April to 31 March, so January to March still
+// belong to the year that started the previous April. Only the April boundary
+// is read here; the labels themselves are written by the server.
+const currentStartYear = () => {
+  const today = new Date();
+  return String(today.getMonth() < 3 ? today.getFullYear() - 1 : today.getFullYear());
+};
 
 // The sauda register starts from a seller: pick one (or create one on the spot)
 // and the register for that seller opens below.
@@ -20,6 +35,7 @@ export default function SaudaRegister({
   const [saudas, setSaudas] = useState([]);
   const [loadingSaudas, setLoadingSaudas] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [year, setYear] = useState(ALL_YEARS);
 
   useEffect(() => {
     let current = true;
@@ -61,6 +77,13 @@ export default function SaudaRegister({
       .then((records) => {
         if (!current) return;
         setSaudas(records);
+        // Open on the financial year we are in when the seller has saudas in it,
+        // and on everything when they do not, so the register never opens empty
+        // on a year nothing was traded in.
+        const thisYear = records.find(
+          (sauda) => startYear(sauda.financial_year) === currentStartYear(),
+        );
+        setYear(thisYear ? thisYear.financial_year : ALL_YEARS);
         setError(null);
       })
       .catch(() => {
@@ -118,6 +141,23 @@ export default function SaudaRegister({
   };
 
   const selected = sellers.find((seller) => String(seller.id) === String(selectedId)) ?? null;
+
+  // Only the years this seller has saudas in, newest first. Deleting the last
+  // sauda of a year takes that year off the list, so what is chosen is read
+  // back through it rather than trusted on its own.
+  const years = useMemo(
+    () => [...new Set(saudas.map((sauda) => sauda.financial_year))].sort().reverse(),
+    [saudas],
+  );
+  const activeYear = years.includes(year) ? year : ALL_YEARS;
+  const visible = useMemo(
+    () =>
+      activeYear === ALL_YEARS
+        ? saudas
+        : saudas.filter((sauda) => sauda.financial_year === activeYear),
+    [saudas, activeYear],
+  );
+
   // Both flashes are driven by the query string, so they only belong to the
   // seller we were sent back with.
   const cameBackWith = selected && String(sellerId) === String(selected.id);
@@ -138,7 +178,7 @@ export default function SaudaRegister({
                 <li>
                   <a
                     className="dropdown__item"
-                    href={saudaRegisterUrl(companyId, selectedId, "pdf")}
+                    href={saudaRegisterUrl(companyId, selectedId, "pdf", activeYear)}
                     download
                   >
                     PDF
@@ -147,7 +187,7 @@ export default function SaudaRegister({
                 <li>
                   <a
                     className="dropdown__item"
-                    href={saudaRegisterUrl(companyId, selectedId, "xlsx")}
+                    href={saudaRegisterUrl(companyId, selectedId, "xlsx", activeYear)}
                     download
                   >
                     Excel
@@ -169,21 +209,42 @@ export default function SaudaRegister({
       )}
       {justSaved && <p className="alert alert--success">Sauda saved.</p>}
 
-      <Combobox
-        label="Seller"
-        options={sellers}
-        value={selectedId}
-        loading={loadingSellers}
-        onSelect={(seller) => setSelectedId(seller ? seller.id : null)}
-        onAddNew={addNewSeller}
-        addNewLabel="Add new seller"
-        placeholder="Type a seller name…"
-        emptyMessage="No sellers on record yet."
-      />
+      <div className="filters">
+        <Combobox
+          label="Seller"
+          options={sellers}
+          value={selectedId}
+          loading={loadingSellers}
+          onSelect={(seller) => setSelectedId(seller ? seller.id : null)}
+          onAddNew={addNewSeller}
+          addNewLabel="Add new seller"
+          placeholder="Type a seller name…"
+          emptyMessage="No sellers on record yet."
+        />
+
+        {/* Only the years the seller has traded in are worth offering. */}
+        {selected && years.length > 0 && (
+          <div className="field">
+            <label htmlFor="register-year">Financial year</label>
+            <select
+              id="register-year"
+              value={activeYear}
+              onChange={(event) => setYear(event.target.value)}
+            >
+              {years.map((entry) => (
+                <option key={entry} value={entry}>
+                  {entry}
+                </option>
+              ))}
+              <option value={ALL_YEARS}>All years</option>
+            </select>
+          </div>
+        )}
+      </div>
 
       {selected ? (
         <SaudaList
-          saudas={saudas}
+          saudas={visible}
           loading={loadingSaudas}
           sellerName={selected.name}
           onEdit={editSauda}
