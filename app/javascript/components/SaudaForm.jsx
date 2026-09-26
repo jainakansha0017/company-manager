@@ -343,12 +343,7 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
   const errorFor = (key) => errors[key]?.[0];
 
   const seller = sellers.find((entry) => String(entry.id) === String(selectedSellerId)) ?? null;
-  // Once a seller is picked the list is already just theirs; before that, the
-  // seller's name rides along so marks that share a name across sellers (the
-  // uniqueness is only scoped per seller) can still be told apart.
-  const markOptions = selectedSellerId
-    ? marks
-    : marks.map((mark) => ({ ...mark, name: `${mark.name} — ${mark.seller_name}` }));
+  const markOptions = marks;
   const derived = deriveAmounts(lines, values.discount_percent);
   const brokerageBasis = BROKERAGE_BASES[seller?.brokerage_basis];
 
