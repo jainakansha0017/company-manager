@@ -29,14 +29,6 @@ RSpec.describe "Api::V1 saudas" do
       expect(json).to be_empty
     end
 
-    it "does not leak saudas belonging to another company" do
-      create(:sauda)
-
-      get "/api/v1/saudas", params: { company_id: company.id, seller_id: seller.id }
-
-      expect(json).to be_empty
-    end
-
     it "serialises the fields the register needs" do
       create(:sauda, company: company, seller: seller, buyer: buyer)
 
@@ -111,10 +103,18 @@ RSpec.describe "Api::V1 saudas" do
         .to include("sauda-register-#{seller.name.parameterize}-2024-2025.xlsx")
     end
 
-    it "404s when the company or the seller is not on record" do
-      get "/api/v1/saudas.pdf", params: { company_id: 0, seller_id: seller.id }
+    it "404s when the seller is not on record" do
+      get "/api/v1/saudas.pdf", params: { seller_id: 0 }
 
       expect(response).to have_http_status(:not_found)
+    end
+
+    # No company_id at all is the normal case now that a sauda need not
+    # belong to one.
+    it "downloads without a company_id" do
+      get "/api/v1/saudas.xlsx", params: { seller_id: seller.id }
+
+      expect(response).to have_http_status(:ok)
     end
   end
 
@@ -124,7 +124,6 @@ RSpec.describe "Api::V1 saudas" do
     let(:valid_params) do
       {
         sauda: {
-          company_id: company.id,
           seller_id: seller.id,
           buyer_id: buyer.id,
           sauda_no: "S-2026-042",
@@ -160,6 +159,15 @@ RSpec.describe "Api::V1 saudas" do
       expect(response).to have_http_status(:created)
       expect(json["tax_invoice_no"]).to eq("TI-2026-118")
       expect(json["buyer_name"]).to eq(buyer.name)
+    end
+
+    # Nothing is company-specific any more: a sauda is created with no
+    # company_id at all, and that's fine.
+    it "creates a sauda with no company" do
+      post "/api/v1/saudas", params: valid_params
+
+      expect(response).to have_http_status(:created)
+      expect(json["company_id"]).to be_nil
     end
 
     it "records how the goods travelled" do

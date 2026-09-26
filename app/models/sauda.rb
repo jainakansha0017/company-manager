@@ -1,7 +1,10 @@
 # One entry in a company's sauda register: what was sold, to whom, under which
 # marks. Quantities live on the mark/grade rows; `total_kg` is derived from them.
 class Sauda < ApplicationRecord
-  belongs_to :company
+  # Not required: nothing maps a sauda to a company yet (a seller may end up
+  # carrying that link instead), and the financial year is worked out from
+  # `sauda_date` rather than the company's own, so nothing else depends on it.
+  belongs_to :company, optional: true
   belongs_to :seller
   belongs_to :buyer
 

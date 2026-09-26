@@ -44,6 +44,14 @@ RSpec.describe SaudaRegisterExport do
       expect(rows[1]).to eq(["Sauda register for Ganges Rice Depot"])
     end
 
+    # A sauda need not belong to a company at all now.
+    it "heads the sheet with just the seller when there is no company" do
+      sauda = sauda_worth_100k(company: nil)
+      rows = sheet_rows(described_class.new([sauda], seller: seller).to_xlsx)
+
+      expect(rows[0]).to eq(["Sauda register for Ganges Rice Depot"])
+    end
+
     it "carries the register's columns" do
       rows = sheet_rows(export(sauda_worth_100k).to_xlsx)
 
@@ -122,6 +130,11 @@ RSpec.describe SaudaRegisterExport do
 
     it "renders an empty register without falling over" do
       expect(export([]).to_pdf).to start_with("%PDF")
+    end
+
+    it "renders without falling over when there is no company" do
+      sauda = sauda_worth_100k(company: nil)
+      expect(described_class.new([sauda], seller: seller).to_pdf).to start_with("%PDF")
     end
   end
 

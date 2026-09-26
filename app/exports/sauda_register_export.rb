@@ -26,7 +26,10 @@ class SaudaRegisterExport
     Column.new("Brokerage", :sauda, :money, ->(sauda, _) { sauda.brokerage_amt }, true)
   ].freeze
 
-  def initialize(saudas, company:, seller:, financial_year: nil)
+  # `company` is optional now that a sauda need not belong to one: an old
+  # export made before a seller had a company_id attached still gets its
+  # company line, a fresh one just starts from the seller.
+  def initialize(saudas, seller:, financial_year: nil, company: nil)
     @saudas = saudas
     @company = company
     @seller = seller
@@ -45,7 +48,7 @@ class SaudaRegisterExport
     package.workbook.add_worksheet(name: "Sauda register") do |sheet|
       styles = xlsx_styles(package.workbook)
 
-      sheet.add_row [company.name], style: styles[:title]
+      sheet.add_row [company.name], style: styles[:title] if company
       sheet.add_row [subtitle]
       sheet.add_row []
       sheet.add_row COLUMNS.map(&:header), style: styles[:header]
@@ -63,7 +66,7 @@ class SaudaRegisterExport
   def to_pdf
     pdf = Prawn::Document.new(page_size: "A4", page_layout: :landscape, margin: 24)
 
-    pdf.text company.name, size: 14, style: :bold
+    pdf.text company.name, size: 14, style: :bold if company
     pdf.text subtitle, size: 10
     pdf.move_down 10
 

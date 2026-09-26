@@ -5,11 +5,12 @@ RSpec.describe Sauda do
     expect(build(:sauda)).to be_valid
   end
 
-  it "requires a company" do
+  # A sauda is not tied to a company: there is no link yet from a seller to
+  # one, so nothing can be inferred, and nothing needs it typed in either.
+  it "does not require a company" do
     sauda = build(:sauda, company: nil)
 
-    expect(sauda).not_to be_valid
-    expect(sauda.errors[:company]).to be_present
+    expect(sauda).to be_valid
   end
 
   it "requires a seller" do
