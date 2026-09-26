@@ -26,9 +26,13 @@ export default function Combobox({
   const inputRef = useRef(null);
 
   // Keep the input text in step when the selection is changed from outside,
-  // e.g. after coming back from the "add new" page.
+  // e.g. after coming back from the "add new" page, or a sibling field
+  // resetting this one's value (changing the seller clears the mark). Skipped
+  // while the input has focus so it doesn't stomp on what's being typed —
+  // typing over a selection clears it via onChange below instead.
   useEffect(() => {
-    if (selected) setQuery(selected.name);
+    if (document.activeElement === inputRef.current) return;
+    setQuery(selected ? selected.name : "");
   }, [selected?.id]);
 
   const needle = query.trim().toLowerCase();
@@ -92,11 +96,22 @@ export default function Combobox({
     if (event.key === "Tab") setOpen(false);
   };
 
+  // Clears whatever is picked and reopens the list on the full set of
+  // options, so a preselected value can be swapped for another without
+  // first typing over it to clear it.
+  const clear = () => {
+    onSelect(null);
+    setQuery("");
+    setHighlight(0);
+    inputRef.current?.focus();
+    show(true);
+  };
+
   return (
     <div className="combobox">
       {label && <label htmlFor={id}>{label}</label>}
 
-      <div className="combobox__control">
+      <div className={`combobox__control${selected ? " combobox__control--clearable" : ""}`}>
         <input
           id={id}
           ref={inputRef}
@@ -124,6 +139,20 @@ export default function Combobox({
             setQuery(selected ? selected.name : "");
           }}
         />
+
+        {selected && !disabled && !loading && (
+          <button
+            type="button"
+            className="combobox__clear"
+            aria-label={label ? `Clear ${label.toLowerCase()}` : "Clear"}
+            // Keep focus in the input rather than letting the button steal
+            // it and fire the input's own onBlur first.
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={clear}
+          >
+            ×
+          </button>
+        )}
 
         {open && (
           <ul className="combobox__list" id={listId} role="listbox">
