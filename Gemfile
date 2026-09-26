@@ -49,7 +49,15 @@ gem "prawn-table"
 # caxlsx zips the workbook with rubyzip, and rubyzip 3 stamps every entry
 # "version needed to extract: 4.5" — the Zip64 marker. Excel and LibreOffice
 # both refuse to open an .xlsx whose entries claim Zip64, so the download comes
-# out corrupt. rubyzip 2 writes the 2.0 marker they expect.
+# out corrupt. rubyzip 2 writes the 2.0 marker they expect. Confirmed this is
+# still true as of rubyzip 3.7.0, not just the early 3.x releases.
+#
+# `bundler-audit` flags 2.3 for CVE-2026-85396, a path-traversal bug when
+# *extracting* an untrusted zip (crafted `../` entry names escape the
+# destination directory). This app only ever writes zips (through caxlsx, for
+# the .xlsx export) and never extracts one, so the vulnerable code path is
+# never reached here — accepted rather than fixed, since the fixed version
+# breaks the export outright.
 gem "rubyzip", "~> 2.3"
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
@@ -75,6 +83,11 @@ end
 group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
+
+  # Static analysis for Rails-specific vulnerabilities (SQL injection, mass
+  # assignment, etc.) and known CVEs in the Gemfile's dependencies.
+  gem "brakeman", require: false
+  gem "bundler-audit", require: false
 
   # Add speed badges [https://github.com/MiniProfiler/rack-mini-profiler]
   # gem "rack-mini-profiler"
