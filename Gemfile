@@ -38,6 +38,9 @@ gem "erb", "~> 2.2"
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 gem "bcrypt", "~> 3.1.7"
 
+# Throttles repeated requests, chiefly to slow brute-forcing of the login form.
+gem "rack-attack"
+
 # The two download formats of the sauda register.
 gem "caxlsx"
 gem "prawn", "~> 2.5"
