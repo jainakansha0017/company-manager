@@ -20,11 +20,6 @@ bundle exec rails assets:clean
 
 bundle exec rails db:migrate
 
-# Rows written before pan/gst_no/account_number were encrypted are still
-# plaintext; this rewrites them as ciphertext. Safe on every deploy — it's a
-# cheap no-op once every row is migrated (see the task for why).
-bundle exec rails data:encrypt_existing_data
-
 # There is no sign-up, so the first user has to be made here or there is no way
 # into the deployed app. The seed does nothing unless ADMIN_EMAIL and
 # ADMIN_PASSWORD are set in the dashboard, and resets the password rather than
