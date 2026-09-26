@@ -11,10 +11,9 @@ class Party < ApplicationRecord
   ROLES = %w[Buyer Seller].freeze
 
   validates :type, inclusion: { in: ROLES }
-  validates :pan, uniqueness: { scope: :type, case_sensitive: false },
-                  allow_nil: true
-  validates :gst_no, uniqueness: { scope: :type, case_sensitive: false },
-                     if: :gst_registered?
+  # Case-sensitive: see the comment on the same validations in Company.
+  validates :pan, uniqueness: { scope: :type }, allow_nil: true
+  validates :gst_no, uniqueness: { scope: :type }, if: :gst_registered?
 
   scope :ordered, -> { order(name: :asc) }
 

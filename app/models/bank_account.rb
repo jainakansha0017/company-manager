@@ -2,6 +2,10 @@ class BankAccount < ApplicationRecord
   IFSC_FORMAT = /\A[A-Z]{4}0[A-Z0-9]{6}\z/
   ACCOUNT_TYPES = %w[Savings Current OD CC].freeze
 
+  # Deterministic so the per-accountable uniqueness validation below can still
+  # query by value; the ciphertext for a given number is always the same.
+  encrypts :account_number, deterministic: true
+
   # Owned by a Company, a Buyer or a Seller.
   belongs_to :accountable, polymorphic: true
 

@@ -13,6 +13,12 @@ module BusinessEntity
   OPTIONAL_IDENTIFIERS = %i[pan gst_no trade_license_no food_license_no].freeze
 
   included do
+    # Deterministic so the uniqueness validations below (and the DB's own
+    # unique indexes) can still compare values — same plaintext always
+    # produces the same ciphertext.
+    encrypts :pan, deterministic: true
+    encrypts :gst_no, deterministic: true
+
     has_many :bank_accounts, as: :accountable, dependent: :destroy
     accepts_nested_attributes_for :bank_accounts, allow_destroy: true
 

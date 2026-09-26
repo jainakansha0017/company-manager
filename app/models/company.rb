@@ -16,8 +16,11 @@ class Company < ApplicationRecord
 
   validates :financial_year, presence: true,
                              format: { with: FINANCIAL_YEAR_FORMAT, message: "must look like 2025-2026" }
-  validates :pan, uniqueness: { case_sensitive: false }, allow_nil: true
-  validates :gst_no, uniqueness: { case_sensitive: false }, if: :gst_registered?
+  # Case-sensitive: pan/gst_no are encrypted deterministically, which cannot
+  # support a case-insensitive DB comparison. Harmless in practice since
+  # BusinessEntity#normalise_attributes always upcases both before validation.
+  validates :pan, uniqueness: true, allow_nil: true
+  validates :gst_no, uniqueness: true, if: :gst_registered?
 
   private
 
