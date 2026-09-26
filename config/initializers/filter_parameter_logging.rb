@@ -6,3 +6,10 @@
 Rails.application.config.filter_parameters += [
   :passw, :secret, :token, :_key, :crypt, :salt, :certificate, :otp, :ssn
 ]
+
+# Regexps (anchored to the whole key), not plain strings: "pan" as a partial
+# match also matches "company", filtering the entire company hash instead of
+# just the one field.
+Rails.application.config.filter_parameters += [
+  /\Apan\z/, /\Agst_no\z/, /\Aaccount_number\z/
+]
