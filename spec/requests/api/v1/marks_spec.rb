@@ -26,12 +26,23 @@ RSpec.describe "Api::V1 marks" do
       expect(json).to be_empty
     end
 
-    it "serialises just what the dropdown needs" do
+    it "serialises what the dropdown needs, including the seller's name" do
       create(:mark, seller: seller)
 
       get "/api/v1/marks", params: { seller_id: seller.id }
 
-      expect(json.first.keys).to match_array(%w[id seller_id name])
+      expect(json.first.keys).to match_array(%w[id seller_id name seller_name])
+      expect(json.first["seller_name"]).to eq(seller.name)
+    end
+
+    it "returns every seller's marks when no seller_id is given" do
+      create(:mark, seller: seller, name: "Zenith")
+      create(:mark, name: "Apex")
+
+      get "/api/v1/marks"
+
+      expect(response).to have_http_status(:ok)
+      expect(json.map { |mark| mark["name"] }).to eq(%w[Apex Zenith])
     end
   end
 
@@ -59,6 +70,31 @@ RSpec.describe "Api::V1 marks" do
 
       expect(response).to have_http_status(:unprocessable_content)
       expect(json["errors"]["name"]).to include("has already been taken")
+    end
+  end
+
+  describe "DELETE /api/v1/marks/:id" do
+    it "deletes a mark that is not used on any sauda" do
+      mark = create(:mark, seller: seller)
+
+      expect { delete "/api/v1/marks/#{mark.id}" }.to change(Mark, :count).by(-1)
+
+      expect(response).to have_http_status(:no_content)
+    end
+
+    it "refuses to delete a mark that a sauda uses" do
+      sauda_mark = create(:sauda_mark)
+
+      expect { delete "/api/v1/marks/#{sauda_mark.mark.id}" }.not_to change(Mark, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(json["errors"]["base"]).to be_present
+    end
+
+    it "404s for a mark that does not exist" do
+      delete "/api/v1/marks/0"
+
+      expect(response).to have_http_status(:not_found)
     end
   end
 end

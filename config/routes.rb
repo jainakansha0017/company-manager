@@ -16,7 +16,7 @@ Rails.application.routes.draw do
       # wins over the default, so asking for neither still gets the JSON.
       resources :saudas, only: %i[index show create update destroy],
                          defaults: { format: :json }
-      resources :marks, only: %i[index create]
+      resources :marks, only: %i[index create destroy]
     end
   end
 

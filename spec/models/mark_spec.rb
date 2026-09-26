@@ -48,4 +48,13 @@ RSpec.describe Mark do
 
     expect { mark.seller.destroy }.to change(described_class, :count).by(-1)
   end
+
+  it "refuses to be destroyed while a sauda uses it" do
+    sauda_mark = create(:sauda_mark)
+    mark = sauda_mark.mark
+
+    expect(mark.destroy).to be false
+    expect(mark.errors[:base]).to be_present
+    expect(described_class.exists?(mark.id)).to be true
+  end
 end

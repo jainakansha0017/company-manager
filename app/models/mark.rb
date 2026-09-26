@@ -3,6 +3,10 @@
 class Mark < ApplicationRecord
   belongs_to :seller
 
+  # Refused while the mark is used on a sauda, so that sauda's history keeps
+  # naming what it actually shipped under.
+  has_many :sauda_marks, dependent: :restrict_with_error
+
   before_validation :normalise_name
 
   validates :name, presence: true, length: { maximum: 255 },
