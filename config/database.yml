@@ -36,6 +36,37 @@ test:
 # The fetch is guarded because Rails renders every environment's block through
 # ERB whatever environment you are in, so an unguarded fetch would stop `rails
 # console` from booting in development too.
+#
+# `sslmode` is forced to verify-full here rather than left to the string pasted
+# into the Render dashboard. Neon's own copy-paste connection string ends in
+# `?sslmode=require`, and require encrypts without checking who is on the other
+# end — it will hand the database password to anyone who can answer to Neon's
+# hostname. verify-full checks the certificate and the hostname on it.
+#
+# Rewriting the query string is what it takes: where a setting appears both in
+# the URL and as a key in this block, the URL wins, so a `sslmode:` key here
+# would be quietly overridden by the `require` already in the pasted string.
+# Doing it in the URL also means the guarantee lives in version control instead
+# of depending on an environment variable being typed correctly.
+#
+# `sslrootcert` says which authorities to trust. libpq otherwise looks for
+# ~/.postgresql/root.crt, which does not exist on the deploy, and verify-full
+# fails closed without it. Neon's certificates come from Let's Encrypt, whose
+# ISRG roots are in the distribution's bundle. `system` would say the same in
+# less space but needs libpq 16 or newer, and the path works on any version.
+<%
+  database_url = Rails.env.production? ? ENV.fetch("DATABASE_URL") : ENV["DATABASE_URL"]
+
+  if database_url
+    uri = URI.parse(database_url)
+    settings = URI.decode_www_form(uri.query.to_s)
+                  .reject { |name, _| %w[sslmode sslrootcert].include?(name) }
+    settings << ["sslmode", "verify-full"]
+    settings << ["sslrootcert", "/etc/ssl/certs/ca-certificates.crt"]
+    uri.query = URI.encode_www_form(settings)
+    database_url = uri.to_s
+  end
+%>
 production:
-  url: <%= Rails.env.production? ? ENV.fetch("DATABASE_URL") : ENV["DATABASE_URL"] %>
+  url: <%= database_url %>
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
