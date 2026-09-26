@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { getSession, listCompanies, logOut, setUnauthorizedHandler } from "../lib/api";
-import HomePage from "./HomePage";
 import CompaniesPage from "./CompaniesPage";
-import CompanyWorkspace, { DEFAULT_TAB } from "./CompanyWorkspace";
+import SaudaRegister from "./SaudaRegister";
+import SaudaForm from "./SaudaForm";
 import LoginPage from "./LoginPage";
 import PartyPage from "./PartyPage";
 
-// /companies/:id, /companies/:id/:tab, /companies/:id/:tab/:action
-const COMPANY_PATH = /^\/companies\/(\d+)(?:\/([\w-]+))?(?:\/([\w-]+))?\/?$/;
+// /sauda, /sauda/new, /sauda/edit — the register itself and its form. Nothing
+// company-specific is in the path any more: a sauda is read and written by
+// seller alone.
+const SAUDA_PATH = /^\/sauda(?:\/(new|edit))?\/?$/;
 const PARTY_PATH = /^\/(buyers|sellers)(\/new)?\/?$/;
 
 function parseRoute(href) {
@@ -15,50 +17,46 @@ function parseRoute(href) {
   const pathname = url.pathname.replace(/\/+$/, "") || "/";
   const query = url.searchParams;
 
-  if (pathname === "/companies") return { name: "manage" };
+  if (pathname === "/companies") return { name: "companies" };
 
   const party = pathname.match(PARTY_PATH);
   if (party) {
     return {
       name: party[1],
-      // /sellers/new?name=Acme&return=/companies/3/sauda-register
+      // /sellers/new?name=Acme&return=/sauda
       startNew: Boolean(party[2]),
       prefillName: query.get("name") ?? "",
       returnTo: query.get("return") ?? null,
     };
   }
 
-  const company = pathname.match(COMPANY_PATH);
-  if (company) {
-    return {
-      name: "company",
-      companyId: company[1],
-      tab: company[2] || DEFAULT_TAB,
-      action: company[3] ?? null,
-      sellerId: query.get("seller_id"),
-      buyerId: query.get("buyer_id"),
-      saudaId: query.get("sauda_id"),
-      sellerJustAdded: query.get("added") === "1",
-      saudaSaved: query.get("saved") === "1",
-    };
-  }
+  const sauda = pathname.match(SAUDA_PATH);
 
-  return { name: "home" };
+  // Sauda is the default: "/" and anything not otherwise recognised (an old
+  // link, say) still open on the register rather than a blank page.
+  return {
+    name: "sauda",
+    action: sauda ? sauda[1] ?? null : null,
+    sellerId: query.get("seller_id"),
+    buyerId: query.get("buyer_id"),
+    saudaId: query.get("sauda_id"),
+    sellerJustAdded: query.get("added") === "1",
+    saudaSaved: query.get("saved") === "1",
+  };
 }
 
 const currentHref = () => window.location.pathname + window.location.search;
 
-// Which top-level nav item should light up for a given route.
-const NAV_FOR = { home: "companies", manage: "companies", company: "companies" };
-
 const NAV = [
-  { key: "companies", path: "/", label: "Companies" },
-  { key: "buyers", path: "/buyers", label: "Buyer" },
+  { key: "sauda", path: "/", label: "Sauda" },
   { key: "sellers", path: "/sellers", label: "Seller" },
+  { key: "buyers", path: "/buyers", label: "Buyer" },
+  { key: "companies", path: "/companies", label: "Companies" },
 ];
 
 export default function App() {
   const [route, setRoute] = useState(() => parseRoute(currentHref()));
+  const [navOpen, setNavOpen] = useState(false);
 
   // `undefined` while we are still asking the server; `null` once we know
   // nobody is signed in. The difference matters — rendering the login form
@@ -129,6 +127,7 @@ export default function App() {
     window.history.pushState({}, "", path);
     setRoute(parseRoute(path));
     window.scrollTo(0, 0);
+    setNavOpen(false);
   }, []);
 
   const signOut = useCallback(async () => {
@@ -145,39 +144,21 @@ export default function App() {
     }
   }, [navigate]);
 
-  const activeNav = NAV_FOR[route.name] ?? route.name;
+  const activeNav = route.name;
 
   // The register sets fifteen columns side by side, so it is given more of the
   // window than the forms and short lists the rest of the app is made of.
-  const wide =
-    route.name === "company" && route.tab === "sauda-register" && !route.action;
+  const wide = route.name === "sauda" && !route.action;
 
   const renderRoute = () => {
     switch (route.name) {
-      case "manage":
+      case "companies":
         return (
           <CompaniesPage
             companies={companies}
             loading={loading}
             error={error}
             onChanged={setCompanies}
-            onNavigate={navigate}
-          />
-        );
-      case "company":
-        return (
-          <CompanyWorkspace
-            companyId={route.companyId}
-            company={companies.find((entry) => String(entry.id) === route.companyId)}
-            tab={route.tab}
-            action={route.action}
-            sellerId={route.sellerId}
-            buyerId={route.buyerId}
-            saudaId={route.saudaId}
-            sellerJustAdded={route.sellerJustAdded}
-            saudaSaved={route.saudaSaved}
-            loading={loading}
-            onNavigate={navigate}
           />
         );
       case "buyers":
@@ -193,12 +174,19 @@ export default function App() {
           />
         );
       default:
-        return (
-          <HomePage
-            companies={companies}
-            loading={loading}
-            error={error}
-            onChanged={setCompanies}
+        return route.action === "new" || route.action === "edit" ? (
+          <SaudaForm
+            key={route.saudaId ?? "new"}
+            sellerId={route.sellerId}
+            saudaId={route.action === "edit" ? route.saudaId : null}
+            buyerId={route.buyerId}
+            onNavigate={navigate}
+          />
+        ) : (
+          <SaudaRegister
+            sellerId={route.sellerId}
+            sellerJustAdded={route.sellerJustAdded}
+            saudaSaved={route.saudaSaved}
             onNavigate={navigate}
           />
         );
@@ -227,6 +215,9 @@ export default function App() {
           onSignedIn={(user) => {
             setEndedSession(false);
             setCurrentUser(user);
+            // Signing in always opens on the home page, whatever page a
+            // lapsed session or a stale link happened to be sitting on.
+            navigate("/");
           }}
         />
       </div>
@@ -234,13 +225,38 @@ export default function App() {
   }
 
   return (
-    <div className={`page${wide ? " page--wide" : ""}`}>
-      <nav className="nav">
+    <>
+      <div className="topbar">
+        <button
+          type="button"
+          className="hamburger"
+          aria-label={navOpen ? "Close menu" : "Open menu"}
+          aria-expanded={navOpen}
+          onClick={() => setNavOpen((open) => !open)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+
+        <div className="nav__user">
+          <span className="nav__user-name">{currentUser.name}</span>
+          <button type="button" className="button button--small" onClick={signOut}>
+            Sign out
+          </button>
+        </div>
+      </div>
+
+      {navOpen && <div className="nav-overlay" onClick={() => setNavOpen(false)} />}
+
+      <nav className={`nav-drawer${navOpen ? " nav-drawer--open" : ""}`}>
         {NAV.map((entry) => (
           <a
             key={entry.key}
             href={entry.path}
-            className={`nav__link${activeNav === entry.key ? " nav__link--active" : ""}`}
+            className={`nav-drawer__link${
+              activeNav === entry.key ? " nav-drawer__link--active" : ""
+            }`}
             onClick={(event) => {
               event.preventDefault();
               navigate(entry.path);
@@ -249,16 +265,9 @@ export default function App() {
             {entry.label}
           </a>
         ))}
-
-        <div className="nav__user">
-          <span className="nav__user-name">{currentUser.name}</span>
-          <button type="button" className="button button--small" onClick={signOut}>
-            Sign out
-          </button>
-        </div>
       </nav>
 
-      {renderRoute()}
-    </div>
+      <div className={`page${wide ? " page--wide" : ""}`}>{renderRoute()}</div>
+    </>
   );
 }

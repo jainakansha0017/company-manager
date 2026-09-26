@@ -30,45 +30,104 @@ body {
   max-width: 1500px;
 }
 
-.nav {
+/* The bar across the top of every signed-in screen: the hamburger that opens
+   the drawer on the left, whoever is signed in on the right. */
+.topbar {
   display: flex;
-  gap: 4px;
-  margin-bottom: 28px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px;
+  background: #fff;
   border-bottom: 1px solid var(--border);
 }
 
-.nav__link {
-  padding: 10px 18px;
-  color: var(--muted);
-  font-weight: 600;
-  text-decoration: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
+/* Three bars drawn from flex children rather than an image, so it takes the
+   button's own colour and needs no asset. */
+.hamburger {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 36px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
 }
 
-.nav__link:hover {
-  color: var(--text);
+.hamburger span {
+  display: block;
+  width: 100%;
+  height: 3px;
+  flex: 0 0 auto;
+  background: #000;
+  border-radius: 1px;
 }
 
-.nav__link--active {
-  color: var(--primary);
-  border-bottom-color: var(--primary);
-}
-
-/* Who is signed in, pushed to the far end of the nav so it never competes with
-   the links for the eye. */
+/* Who is signed in, pushed to the far end of the bar so it never competes with
+   the hamburger for the eye. */
 .nav__user {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-left: auto;
-  padding-bottom: 6px;
 }
 
 .nav__user-name {
   font-size: 13px;
   font-weight: 600;
   color: var(--muted);
+}
+
+/* Dims the page behind the open drawer and closes it on a click outside. */
+.nav-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(31, 41, 51, 0.35);
+  z-index: 20;
+}
+
+/* Off canvas to the left until opened, then slid into view. Fixed rather than
+   part of the page flow, so it draws over the content instead of pushing it
+   aside. */
+.nav-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 240px;
+  padding: 20px 12px;
+  background: #fff;
+  border-right: 1px solid var(--border);
+  box-shadow: 4px 0 18px rgba(0, 0, 0, 0.12);
+  transform: translateX(-100%);
+  transition: transform 0.18s ease-out;
+}
+
+.nav-drawer--open {
+  transform: translateX(0);
+}
+
+.nav-drawer__link {
+  padding: 10px 14px;
+  border-radius: 6px;
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.nav-drawer__link:hover {
+  background: #eef1f6;
+}
+
+.nav-drawer__link--active {
+  color: var(--primary);
+  background: #eef3fd;
 }
 
 .tabs {
@@ -217,6 +276,38 @@ body {
 .combobox__control input:focus {
   outline: 2px solid rgba(47, 111, 237, 0.35);
   border-color: var(--primary);
+}
+
+/* Room for the × once something is picked, so it never sits over the text. */
+.combobox__control--clearable input {
+  padding-right: 30px;
+}
+
+/* Clears the current selection and reopens the list on every option, right
+   in the control rather than requiring the value to be typed over first. */
+.combobox__clear {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.combobox__clear:hover {
+  background: rgba(31, 41, 51, 0.08);
+  color: var(--text);
 }
 
 .combobox__list {
@@ -391,6 +482,102 @@ body {
   padding: 0;
   color: var(--error);
   background: none;
+  text-decoration: underline;
+}
+
+/* The marks a seller trades under, on the seller list: a small pill per mark
+   already on record, plus a toggle that swaps in an inline form for adding
+   one more without leaving the list for the sauda form. */
+.mark-cell {
+  min-width: 160px;
+}
+
+.mark-cell__empty {
+  margin: 0 0 6px;
+}
+
+.mark-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.mark-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px 2px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #eef3fd;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* The "×" on a mark's own pill. Refused server-side while a sauda still
+   uses the mark, so this stays a plain delete rather than asking first
+   whether the mark is free to go. */
+.mark-tag__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mark-tag__remove:hover {
+  background: rgba(192, 57, 43, 0.12);
+  color: var(--error);
+}
+
+.mark-tag__remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.mark-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mark-add input {
+  width: 110px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+}
+
+.mark-add input:focus {
+  outline: 2px solid rgba(47, 111, 237, 0.35);
+  border-color: var(--primary);
+}
+
+/* Neutral inline action, e.g. "+ Add mark" / "Cancel" beside the tags. */
+.mark-add-toggle {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mark-add-toggle:hover {
   text-decoration: underline;
 }
 

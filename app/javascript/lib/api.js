@@ -100,17 +100,14 @@ export const deleteParty = (role, id) =>
   request(`/api/v1/${role}s/${id}`, { method: "DELETE" });
 
 // The sauda register is always read one seller at a time.
-export const listSaudas = (companyId, sellerId) =>
-  request(
-    `/api/v1/saudas?company_id=${encodeURIComponent(companyId)}` +
-      `&seller_id=${encodeURIComponent(sellerId)}`,
-  );
+export const listSaudas = (sellerId) =>
+  request(`/api/v1/saudas?seller_id=${encodeURIComponent(sellerId)}`);
 
 // The same register as a file. A plain link rather than a fetch, so the browser
 // saves it itself; the session cookie rides along and keeps it behind the login.
 // An empty financialYear leaves the file covering every year, as on screen.
-export const saudaRegisterUrl = (companyId, sellerId, format, financialYear = "") => {
-  const params = new URLSearchParams({ company_id: companyId, seller_id: sellerId });
+export const saudaRegisterUrl = (sellerId, format, financialYear = "") => {
+  const params = new URLSearchParams({ seller_id: sellerId });
   if (financialYear) params.set("financial_year", financialYear);
 
   return `/api/v1/saudas.${format}?${params}`;
@@ -128,11 +125,16 @@ export const updateSauda = (id, sauda) =>
 export const deleteSauda = (id) => request(`/api/v1/saudas/${id}`, { method: "DELETE" });
 
 // Marks belong to a seller, and can be created from the sauda form itself.
+// Leaving off sellerId lists every seller's marks, so one can be picked
+// before the seller itself has been.
 export const listMarks = (sellerId) =>
-  request(`/api/v1/marks?seller_id=${encodeURIComponent(sellerId)}`);
+  request(sellerId ? `/api/v1/marks?seller_id=${encodeURIComponent(sellerId)}` : "/api/v1/marks");
 
 export const createMark = (sellerId, name) =>
   request("/api/v1/marks", {
     method: "POST",
     body: JSON.stringify({ mark: { seller_id: sellerId, name } }),
   });
+
+// Refused by the server while a sauda still uses this mark.
+export const deleteMark = (id) => request(`/api/v1/marks/${id}`, { method: "DELETE" });

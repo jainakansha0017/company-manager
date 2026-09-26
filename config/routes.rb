@@ -24,6 +24,8 @@ Rails.application.routes.draw do
 
   # Client-side routes: hand these back to the React app so a refresh or a
   # pasted link still works. Declared after the API namespace so /api is untouched.
+  get "sauda", to: "home#index"
+  get "sauda/*rest", to: "home#index"
   get "buyers", to: "home#index"
   get "buyers/*rest", to: "home#index"
   get "sellers", to: "home#index"

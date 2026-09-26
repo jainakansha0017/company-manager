@@ -3,7 +3,7 @@ import { createCompany, deleteCompany, updateCompany } from "../lib/api";
 import CompanyList from "./CompanyList";
 import EntityForm from "./EntityForm";
 
-export default function CompaniesPage({ companies, loading, error, onChanged, onNavigate }) {
+export default function CompaniesPage({ companies, loading, error, onChanged }) {
   // null = list view, "new" = blank form, otherwise the company being edited.
   const [editing, setEditing] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
@@ -44,19 +44,7 @@ export default function CompaniesPage({ companies, loading, error, onChanged, on
   return (
     <>
       <header className="page__header">
-        <div>
-          <h1>Manage companies</h1>
-          <a
-            href="/"
-            className="link"
-            onClick={(event) => {
-              event.preventDefault();
-              onNavigate("/");
-            }}
-          >
-            ← Back
-          </a>
-        </div>
+        <h1>Manage companies</h1>
         {!editing && (
           <button
             type="button"

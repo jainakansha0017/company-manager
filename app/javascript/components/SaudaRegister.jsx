@@ -21,7 +21,6 @@ const currentStartYear = () => {
 // The sauda register starts from a seller: pick one (or create one on the spot)
 // and the register for that seller opens below.
 export default function SaudaRegister({
-  companyId,
   sellerId,
   sellerJustAdded,
   saudaSaved,
@@ -73,7 +72,7 @@ export default function SaudaRegister({
     let current = true;
     setLoadingSaudas(true);
 
-    listSaudas(companyId, selectedId)
+    listSaudas(selectedId)
       .then((records) => {
         if (!current) return;
         setSaudas(records);
@@ -96,12 +95,10 @@ export default function SaudaRegister({
     return () => {
       current = false;
     };
-  }, [companyId, selectedId]);
+  }, [selectedId]);
 
   const addNewSeller = (name) => {
-    const params = new URLSearchParams({
-      return: `/companies/${companyId}/sauda-register`,
-    });
+    const params = new URLSearchParams({ return: "/sauda" });
     if (name) params.set("name", name);
 
     onNavigate(`/sellers/new?${params}`);
@@ -112,13 +109,12 @@ export default function SaudaRegister({
     event.currentTarget.closest("details").open = false;
   };
 
-  const addNewSauda = () =>
-    onNavigate(`/companies/${companyId}/sauda-register/new?seller_id=${selectedId}`);
+  // The new-sauda form picks its own seller from a dropdown rather than
+  // inheriting whichever one is selected here, so nothing is passed along.
+  const addNewSauda = () => onNavigate("/sauda/new");
 
   const editSauda = (sauda) =>
-    onNavigate(
-      `/companies/${companyId}/sauda-register/edit?seller_id=${selectedId}&sauda_id=${sauda.id}`,
-    );
+    onNavigate(`/sauda/edit?seller_id=${selectedId}&sauda_id=${sauda.id}`);
 
   // A sauda takes its marks and grades down with it, so the confirmation names
   // the sauda rather than asking about "this row".
@@ -168,17 +164,19 @@ export default function SaudaRegister({
     <div className="card panel" role="tabpanel">
       <div className="panel__header">
         <h2>Sauda Register</h2>
-        {selected && (
-          <div className="panel__actions">
-            {/* A native disclosure rather than a menu built from state: the open
-                and closed of it, and the keyboard, are the browser's job. */}
+        <div className="panel__actions">
+          {/* A native disclosure rather than a menu built from state: the open
+              and closed of it, and the keyboard, are the browser's job. Only
+              worth offering once there is a seller (and so a register) to
+              export. */}
+          {selected && (
             <details className="dropdown">
               <summary className="button">Export</summary>
               <ul className="dropdown__menu" onClick={closeDropdown}>
                 <li>
                   <a
                     className="dropdown__item"
-                    href={saudaRegisterUrl(companyId, selectedId, "pdf", activeYear)}
+                    href={saudaRegisterUrl(selectedId, "pdf", activeYear)}
                     download
                   >
                     PDF
@@ -187,7 +185,7 @@ export default function SaudaRegister({
                 <li>
                   <a
                     className="dropdown__item"
-                    href={saudaRegisterUrl(companyId, selectedId, "xlsx", activeYear)}
+                    href={saudaRegisterUrl(selectedId, "xlsx", activeYear)}
                     download
                   >
                     Excel
@@ -195,12 +193,14 @@ export default function SaudaRegister({
                 </li>
               </ul>
             </details>
+          )}
 
-            <button type="button" className="button button--primary" onClick={addNewSauda}>
-              Add New Sauda
-            </button>
-          </div>
-        )}
+          {/* Always available: the new-sauda form picks its own seller from a
+              dropdown rather than requiring one to already be selected here. */}
+          <button type="button" className="button button--primary" onClick={addNewSauda}>
+            New Sauda
+          </button>
+        </div>
       </div>
 
       {error && <p className="alert alert--error">{error}</p>}

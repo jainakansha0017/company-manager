@@ -92,15 +92,16 @@ const deriveAmounts = (lines, discountPercent) => {
   };
 };
 
-// Adding a buyer means leaving this page, so the half-filled sauda is parked
-// in sessionStorage and picked up again on the way back. Keyed by sauda too, so
-// an edit in progress cannot be handed the draft of a new one.
-const draftKey = (companyId, sellerId, saudaId) =>
-  `sauda-draft:${companyId}:${sellerId}:${saudaId ?? "new"}`;
+// Adding a buyer or seller means leaving this page, so the half-filled sauda is
+// parked in sessionStorage and picked up again on the way back. Keyed by sauda,
+// so an edit draft cannot be handed to a new sauda — the seller is no longer
+// part of the key, since which seller the sauda is for is exactly what a trip
+// to "add new seller" might be changing.
+const draftKey = (saudaId) => `sauda-draft:${saudaId ?? "new"}`;
 
-const takeDraft = (companyId, sellerId, saudaId) => {
+const takeDraft = (saudaId) => {
   try {
-    const key = draftKey(companyId, sellerId, saudaId);
+    const key = draftKey(saudaId);
     const raw = sessionStorage.getItem(key);
     sessionStorage.removeItem(key);
     return raw ? JSON.parse(raw) : null;
@@ -110,17 +111,18 @@ const takeDraft = (companyId, sellerId, saudaId) => {
 };
 
 // Enters a new sauda, or edits one already on record when given `saudaId`.
-export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNavigate }) {
-  const [seller, setSeller] = useState(null);
+// `sellerId` from the URL means "select this seller" — set when returning from
+// adding one on the spot, or (for an edit) the seller whose register this was
+// opened from. A brand new sauda opened from the register carries no seller_id
+// at all, so its dropdown opens empty rather than preselected.
+export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
+  const [sellers, setSellers] = useState([]);
   const [buyers, setBuyers] = useState([]);
   const [marks, setMarks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [marksLoading, setMarksLoading] = useState(true);
 
-  const draft = React.useMemo(
-    () => takeDraft(companyId, sellerId, saudaId),
-    [companyId, sellerId, saudaId],
-  );
+  const draft = React.useMemo(() => takeDraft(saudaId), [saudaId]);
 
   // Nothing to fetch for a new sauda, and a parked draft is newer than what is
   // on record, so neither has to wait.
@@ -133,17 +135,31 @@ export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNav
     ...(buyerId ? { buyer_id: Number(buyerId) } : {}),
   }));
   const [lines, setLines] = useState(() => draft?.lines ?? [blankLine()]);
+  // A seller just created on the seller page wins over anything parked; short
+  // of that, a parked draft is newer than the URL. Neither applies to a plain
+  // "Add New Sauda" click, which is exactly the point — it starts unselected.
+  const [selectedSellerId, setSelectedSellerId] = useState(() =>
+    sellerId ? Number(sellerId) : draft?.sellerId ?? null,
+  );
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
   const editing = Boolean(saudaId);
-  const backToRegister = `/companies/${companyId}/sauda-register?seller_id=${sellerId}`;
-  const formPath = editing
-    ? `/companies/${companyId}/sauda-register/edit?seller_id=${sellerId}&sauda_id=${saudaId}`
-    : `/companies/${companyId}/sauda-register/new?seller_id=${sellerId}`;
+
+  const registerPath = "/sauda";
+  const backToRegister = selectedSellerId
+    ? `${registerPath}?seller_id=${selectedSellerId}`
+    : registerPath;
+  const formPath = (() => {
+    const params = new URLSearchParams();
+    if (selectedSellerId) params.set("seller_id", selectedSellerId);
+    if (editing) params.set("sauda_id", saudaId);
+    const query = params.toString();
+    return `${registerPath}/${editing ? "edit" : "new"}${query ? `?${query}` : ""}`;
+  })();
 
   // An edit starts from what is on record, unless we have just come back from
-  // adding a buyer — then the parked draft is the newer of the two.
+  // adding a buyer or seller — then the parked draft is the newer of the two.
   useEffect(() => {
     if (!saudaId || draft) return undefined;
 
@@ -155,6 +171,8 @@ export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNav
         if (!current) return;
         setValues(valuesFrom(sauda));
         setLines(sauda.sauda_marks.length ? linesFrom(sauda) : [blankLine()]);
+        // Only a fallback: the URL normally already carries this seller's id.
+        setSelectedSellerId((existing) => existing ?? sauda.seller_id);
       })
       .catch(() => current && setErrors({ base: ["Could not load that sauda."] }))
       .finally(() => current && setLoadingSauda(false));
@@ -168,9 +186,9 @@ export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNav
     let current = true;
 
     Promise.all([listParties("seller"), listParties("buyer")])
-      .then(([sellers, buyerRecords]) => {
+      .then(([sellerRecords, buyerRecords]) => {
         if (!current) return;
-        setSeller(sellers.find((entry) => String(entry.id) === String(sellerId)) ?? null);
+        setSellers(sellerRecords);
         setBuyers(buyerRecords);
       })
       .catch(() => {})
@@ -181,13 +199,15 @@ export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNav
     return () => {
       current = false;
     };
-  }, [sellerId]);
+  }, []);
 
+  // Scoped to the seller once one is picked; before that, every seller's
+  // marks come back, so a mark can be picked first and name its seller.
   useEffect(() => {
     let current = true;
     setMarksLoading(true);
 
-    listMarks(sellerId)
+    listMarks(selectedSellerId)
       .then((records) => current && setMarks(records))
       .catch(() => {})
       .finally(() => current && setMarksLoading(false));
@@ -195,10 +215,26 @@ export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNav
     return () => {
       current = false;
     };
-  }, [sellerId]);
+  }, [selectedSellerId]);
 
   const setField = (name) => (event) =>
     setValues((current) => ({ ...current, [name]: event.target.value }));
+
+  // Marks are the seller's own, so switching sellers clears whatever mark
+  // lines were started under the previous one rather than leaving them
+  // pointed at marks that no longer make sense.
+  const selectSeller = (seller) => {
+    setSelectedSellerId(seller ? seller.id : null);
+    setLines([blankLine()]);
+  };
+
+  // A mark can be picked before its seller is, since every mark belongs to
+  // exactly one — so the first mark chosen on a blank form names the seller
+  // for it, without touching a seller already chosen by hand.
+  const selectMark = (index, mark) => {
+    updateLine(index, { markId: mark ? mark.id : null });
+    if (mark && !selectedSellerId) setSelectedSellerId(Number(mark.seller_id));
+  };
 
   // The goods are going to the buyer, so their address is the destination in
   // all but the odd case. Filled in on selection and still editable after.
@@ -221,10 +257,10 @@ export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNav
   // Marks are just a name, so "add new" saves one and selects it without
   // leaving the form.
   const handleCreateMark = async (index, name) => {
-    if (!name) return;
+    if (!name || !selectedSellerId) return;
 
     try {
-      const mark = await createMark(Number(sellerId), name);
+      const mark = await createMark(Number(selectedSellerId), name);
       setMarks((current) =>
         [...current, mark].sort((a, b) => a.name.localeCompare(b.name)),
       );
@@ -234,21 +270,35 @@ export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNav
     }
   };
 
-  // Buyers need the full party form, so park the draft and come back to it.
-  const addNewBuyer = (name) => {
+  // Buyers and sellers need their full party form, so park the draft and come
+  // back to it.
+  const parkDraft = () => {
     try {
       sessionStorage.setItem(
-        draftKey(companyId, sellerId, saudaId),
-        JSON.stringify({ values, lines }),
+        draftKey(saudaId),
+        JSON.stringify({ values, lines, sellerId: selectedSellerId }),
       );
     } catch {
       /* a full or disabled sessionStorage just means the draft is not kept */
     }
+  };
+
+  const addNewBuyer = (name) => {
+    parkDraft();
 
     const params = new URLSearchParams({ return: formPath });
     if (name) params.set("name", name);
 
     onNavigate(`/buyers/new?${params}`);
+  };
+
+  const addNewSeller = (name) => {
+    parkDraft();
+
+    const params = new URLSearchParams({ return: formPath });
+    if (name) params.set("name", name);
+
+    onNavigate(`/sellers/new?${params}`);
   };
 
   const totalKg = lines.reduce(
@@ -263,8 +313,7 @@ export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNav
 
     const payload = {
       ...values,
-      company_id: Number(companyId),
-      seller_id: Number(sellerId),
+      seller_id: selectedSellerId ? Number(selectedSellerId) : null,
       sauda_marks_attributes: lines.map((line) => ({
         mark_id: line.markId,
         lot_nos: line.lotNos,
@@ -284,7 +333,7 @@ export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNav
         await createSauda(payload);
       }
 
-      onNavigate(`${backToRegister}&saved=1`);
+      onNavigate(`${backToRegister}${selectedSellerId ? "&" : "?"}saved=1`);
     } catch (error) {
       setErrors(error.errors || { base: ["Something went wrong. Please try again."] });
       setSubmitting(false);
@@ -293,18 +342,17 @@ export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNav
 
   const errorFor = (key) => errors[key]?.[0];
 
+  const seller = sellers.find((entry) => String(entry.id) === String(selectedSellerId)) ?? null;
+  // Once a seller is picked the list is already just theirs; before that, the
+  // seller's name rides along so marks that share a name across sellers (the
+  // uniqueness is only scoped per seller) can still be told apart.
+  const markOptions = selectedSellerId
+    ? marks
+    : marks.map((mark) => ({ ...mark, name: `${mark.name} — ${mark.seller_name}` }));
   const derived = deriveAmounts(lines, values.discount_percent);
   const brokerageBasis = BROKERAGE_BASES[seller?.brokerage_basis];
 
   if (loading || loadingSauda) return <p className="muted">Loading…</p>;
-
-  if (!seller) {
-    return (
-      <div className="card panel">
-        <p className="alert alert--error">That seller no longer exists.</p>
-      </div>
-    );
-  }
 
   return (
     <form className="card panel" onSubmit={handleSubmit} noValidate>
@@ -338,12 +386,49 @@ export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNav
       )}
 
       <fieldset>
-        <legend>Sauda</legend>
+        <legend>Marks</legend>
+        {lines.map((line, index) => (
+          <SaudaMarkFields
+            key={index}
+            index={index}
+            line={line}
+            marks={markOptions}
+            marksLoading={marksLoading}
+            marksEmptyMessage={
+              selectedSellerId ? "No marks for this seller yet." : "No marks on record yet."
+            }
+            onChange={updateLine}
+            onRemove={lines.length > 1 ? removeLine : null}
+            onSelectMark={selectMark}
+            onCreateMark={selectedSellerId ? handleCreateMark : undefined}
+            errorFor={errorFor}
+          />
+        ))}
+
+        <div className="sauda-total">
+          <button type="button" className="button" onClick={addLine}>
+            + Add another mark
+          </button>
+          <p className="sauda-total__value">
+            Total kg <strong>{formatKg(totalKg)}</strong>
+          </p>
+        </div>
+        {errorFor("sauda_marks") && <p className="field__error">{errorFor("sauda_marks")}</p>}
+      </fieldset>
+
+      <fieldset>
+        <legend>Party details</legend>
         <div className="grid">
-          <div className="field">
-            <span className="field__label">Seller</span>
-            <p className="field__static">{seller.name}</p>
-          </div>
+          <Combobox
+            label="Seller"
+            options={sellers}
+            value={selectedSellerId}
+            onSelect={selectSeller}
+            onAddNew={addNewSeller}
+            addNewLabel="Add new seller"
+            placeholder="Type a seller name…"
+            emptyMessage="No sellers on record yet."
+          />
 
           <div className="field">
             <label htmlFor="sauda_no">Sauda no.</label>
@@ -446,36 +531,10 @@ export default function SaudaForm({ companyId, sellerId, saudaId, buyerId, onNav
             {errorFor("bilty_date") && <p className="field__error">{errorFor("bilty_date")}</p>}
           </div>
 
-          
+
         </div>
+        {errorFor("seller") && <p className="field__error">{errorFor("seller")}</p>}
         {errorFor("buyer") && <p className="field__error">{errorFor("buyer")}</p>}
-      </fieldset>
-
-      <fieldset>
-        <legend>Marks</legend>
-        {lines.map((line, index) => (
-          <SaudaMarkFields
-            key={index}
-            index={index}
-            line={line}
-            marks={marks}
-            marksLoading={marksLoading}
-            onChange={updateLine}
-            onRemove={lines.length > 1 ? removeLine : null}
-            onCreateMark={handleCreateMark}
-            errorFor={errorFor}
-          />
-        ))}
-
-        <div className="sauda-total">
-          <button type="button" className="button" onClick={addLine}>
-            + Add another mark
-          </button>
-          <p className="sauda-total__value">
-            Total kg <strong>{formatKg(totalKg)}</strong>
-          </p>
-        </div>
-        {errorFor("sauda_marks") && <p className="field__error">{errorFor("sauda_marks")}</p>}
       </fieldset>
 
       <fieldset>

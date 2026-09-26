@@ -32,8 +32,10 @@ export default function SaudaMarkFields({
   line,
   marks,
   marksLoading,
+  marksEmptyMessage = "No marks for this seller yet.",
   onChange,
   onRemove,
+  onSelectMark,
   onCreateMark,
   errorFor,
 }) {
@@ -89,11 +91,11 @@ export default function SaudaMarkFields({
           options={marks}
           value={line.markId}
           loading={marksLoading}
-          onSelect={(mark) => update({ markId: mark ? mark.id : null })}
-          onAddNew={(name) => onCreateMark(index, name)}
+          onSelect={(mark) => onSelectMark(index, mark)}
+          onAddNew={onCreateMark ? (name) => onCreateMark(index, name) : undefined}
           addNewLabel="Add new mark"
           placeholder="Type a mark…"
-          emptyMessage="No marks for this seller yet."
+          emptyMessage={marksEmptyMessage}
         />
 
         <div className="field">
