@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { createParty, deleteParty, listParties, updateParty } from "../lib/api";
+import {
+  createMark,
+  createParty,
+  deleteMark,
+  deleteParty,
+  listMarks,
+  listParties,
+  updateParty,
+} from "../lib/api";
 import EntityForm from "./EntityForm";
 import PartyList from "./PartyList";
 
@@ -38,6 +46,67 @@ export default function PartyPage({
   useEffect(() => {
     loadParties();
   }, [loadParties]);
+
+  // Marks belong to sellers, so they only come into it on the seller page —
+  // grouped by seller here rather than fetched one seller at a time, since
+  // the whole list is on screen at once anyway.
+  const isSellerPage = role === "seller";
+  const [marksBySeller, setMarksBySeller] = useState({});
+  const [markError, setMarkError] = useState(null);
+
+  const loadMarks = useCallback(async () => {
+    if (!isSellerPage) return;
+
+    try {
+      const records = await listMarks();
+      const grouped = {};
+      records.forEach((mark) => {
+        (grouped[mark.seller_id] ??= []).push(mark);
+      });
+      setMarksBySeller(grouped);
+      setMarkError(null);
+    } catch {
+      setMarkError("Could not load marks.");
+    }
+  }, [isSellerPage]);
+
+  useEffect(() => {
+    loadMarks();
+  }, [loadMarks]);
+
+  const handleAddMark = async (sellerId, name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+
+    const mark = await createMark(sellerId, trimmed);
+    setMarksBySeller((current) => ({
+      ...current,
+      [sellerId]: [...(current[sellerId] ?? []), mark].sort((a, b) =>
+        a.name.localeCompare(b.name),
+      ),
+    }));
+    setMarkError(null);
+  };
+
+  // The server refuses this while a sauda still uses the mark, so that
+  // sauda's history keeps naming what it actually shipped under — the error
+  // it gives back is shown as-is rather than replaced with something vaguer.
+  const handleDeleteMark = async (mark) => {
+    if (!window.confirm(`Delete mark "${mark.name}"? This cannot be undone.`)) return;
+
+    try {
+      await deleteMark(mark.id);
+      setMarksBySeller((current) => ({
+        ...current,
+        [mark.seller_id]: (current[mark.seller_id] ?? []).filter(
+          (entry) => entry.id !== mark.id,
+        ),
+      }));
+      setMarkError(null);
+    } catch (failure) {
+      setMarkError(failure.errors?.base?.[0] || `Could not delete mark "${mark.name}".`);
+    }
+  };
 
   const handleSubmit = (payload) =>
     editing === "new"
@@ -102,6 +171,7 @@ export default function PartyPage({
 
       {flash && <p className="alert alert--success">{flash}</p>}
       {error && <p className="alert alert--error">{error}</p>}
+      {markError && <p className="alert alert--error">{markError}</p>}
 
       {editing ? (
         <EntityForm
@@ -125,6 +195,10 @@ export default function PartyPage({
           }}
           onDelete={handleDelete}
           deletingId={deletingId}
+          showMarks={isSellerPage}
+          marksBySeller={marksBySeller}
+          onAddMark={handleAddMark}
+          onDeleteMark={handleDeleteMark}
         />
       )}
     </>
