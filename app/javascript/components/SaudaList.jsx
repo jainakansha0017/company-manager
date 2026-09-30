@@ -33,7 +33,6 @@ export default function SaudaList({
   saudas,
   loading,
   sellerName,
-  showSeller = false,
   onView,
   onEdit,
   onDelete,
@@ -49,10 +48,6 @@ export default function SaudaList({
       </p>
     );
   }
-
-  // The Sauda band gains a leading Seller column only in the "All" register,
-  // where a row could belong to any of them.
-  const saudaColumns = showSeller ? 6 : 5;
 
   return (
     <>
@@ -78,7 +73,6 @@ export default function SaudaList({
               the bands, whose cells each span five. The widths live here instead,
               in companies.css against `col`. */}
           <colgroup>
-            {showSeller && <col className="col-seller" />}
             <col className="col-date" />
             <col className="col-invoice" />
             <col className="col-bill-date" />
@@ -91,7 +85,6 @@ export default function SaudaList({
             <col className="col-kg" />
             <col className="col-total" />
             <col className="col-gst" />
-            <col className="col-discount" />
             <col className="col-amount" />
             <col className="col-brokerage" />
             <col className="col-actions" />
@@ -102,17 +95,16 @@ export default function SaudaList({
               because the band above it says which of the three it belongs to. */}
           <thead>
             <tr className="table__bands">
-              <th colSpan={saudaColumns}>Sauda</th>
+              <th colSpan={5}>Sauda</th>
               <th colSpan={5} className="col--band-start">
                 Mark
               </th>
-              <th colSpan={5} className="col--band-start">
+              <th colSpan={4} className="col--band-start">
                 Bill
               </th>
               <th className="col--band-start" aria-label="Actions" />
             </tr>
             <tr>
-              {showSeller && <th>Seller</th>}
               <th>Date</th>
               <th>Tax invoice no.</th>
               <th>Bill date</th>
@@ -127,7 +119,6 @@ export default function SaudaList({
 
               <th className="numeric col--band-start">Total tax bill amt</th>
               <th className="numeric">GST</th>
-              <th className="numeric">Discount</th>
               <th className="numeric">Amount</th>
               <th className="numeric">Brokerage</th>
 
@@ -152,7 +143,6 @@ export default function SaudaList({
                 >
                   {index === 0 && (
                     <>
-                      {showSeller && <td rowSpan={span}>{sauda.seller_name}</td>}
                       <td rowSpan={span}>{formatDate(sauda.sauda_date)}</td>
                       <td rowSpan={span}>{sauda.tax_invoice_no || "—"}</td>
                       <td rowSpan={span}>{sauda.bill_date ? formatDate(sauda.bill_date) : "—"}</td>
@@ -174,9 +164,6 @@ export default function SaudaList({
                       </td>
                       <td rowSpan={span} className="numeric">
                         {money(sauda.gst_amt)}
-                      </td>
-                      <td rowSpan={span} className="numeric">
-                        {money(sauda.disc_amt)}
                       </td>
                       <td rowSpan={span} className="numeric">
                         {money(sauda.amount)}

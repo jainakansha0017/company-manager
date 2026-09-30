@@ -869,10 +869,7 @@ legend {
 
 /* Shares add up to around 100, allotted by what each column has to fit: a
    lakh figure needs the room, a bag count does not, and words can always
-   wrap. Matched by class rather than position — the "All" register's Seller
-   column is only in the colgroup some of the time, which would otherwise
-   shift every nth-child index that follows it. */
-.table.table--register col.col-seller { width: 8%; }      /* Seller (All register only) */
+   wrap. */
 .table.table--register col.col-date { width: 7%; }        /* Date */
 .table.table--register col.col-invoice { width: 6%; }     /* Tax invoice no. */
 .table.table--register col.col-bill-date { width: 6%; }   /* Bill date */
@@ -885,7 +882,6 @@ legend {
 .table.table--register col.col-kg { width: 4%; }          /* Kg */
 .table.table--register col.col-total { width: 6%; }       /* Total */
 .table.table--register col.col-gst { width: 5%; }         /* GST */
-.table.table--register col.col-discount { width: 5%; }    /* Discount */
 .table.table--register col.col-amount { width: 6%; }      /* Amount */
 .table.table--register col.col-brokerage { width: 5%; }   /* Brokerage */
 .table.table--register col.col-actions { width: 6%; }     /* Actions */
