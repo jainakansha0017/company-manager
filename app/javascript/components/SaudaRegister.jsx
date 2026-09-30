@@ -6,6 +6,12 @@ import SaudaList from "./SaudaList";
 // What the year dropdown means when nothing is being narrowed to.
 const ALL_YEARS = "";
 
+// A synthetic entry at the top of the seller dropdown: not a real seller, so
+// it is never in `sellers` and never sent to the server, but choosing it
+// switches the register into showing every seller's saudas at once.
+const ALL_SELLERS_ID = "all";
+const ALL_SELLERS_OPTION = { id: ALL_SELLERS_ID, name: "All" };
+
 // Years are matched on the four digits they start with, which is all that says
 // which financial year something falls in.
 const startYear = (year) => String(year ?? "").slice(0, 4);
@@ -72,7 +78,7 @@ export default function SaudaRegister({
     let current = true;
     setLoadingSaudas(true);
 
-    listSaudas(selectedId)
+    listSaudas(selectedId === ALL_SELLERS_ID ? null : selectedId)
       .then((records) => {
         if (!current) return;
         setSaudas(records);
@@ -113,8 +119,10 @@ export default function SaudaRegister({
   // inheriting whichever one is selected here, so nothing is passed along.
   const addNewSauda = () => onNavigate("/sauda/new");
 
+  // The sauda's own seller, not whatever is selected here — in the "All"
+  // register that is not a real seller at all.
   const editSauda = (sauda) =>
-    onNavigate(`/sauda/edit?seller_id=${selectedId}&sauda_id=${sauda.id}`);
+    onNavigate(`/sauda/edit?seller_id=${sauda.seller_id}&sauda_id=${sauda.id}`);
 
   // A sauda takes its marks and grades down with it, so the confirmation names
   // the sauda rather than asking about "this row".
@@ -137,6 +145,7 @@ export default function SaudaRegister({
   };
 
   const selected = sellers.find((seller) => String(seller.id) === String(selectedId)) ?? null;
+  const isAll = selectedId === ALL_SELLERS_ID;
 
   // Only the years this seller has saudas in, newest first. Deleting the last
   // sauda of a year takes that year off the list, so what is chosen is read
@@ -212,7 +221,7 @@ export default function SaudaRegister({
       <div className="filters">
         <Combobox
           label="Seller"
-          options={sellers}
+          options={[ALL_SELLERS_OPTION, ...sellers]}
           value={selectedId}
           loading={loadingSellers}
           onSelect={(seller) => setSelectedId(seller ? seller.id : null)}
@@ -222,8 +231,8 @@ export default function SaudaRegister({
           emptyMessage="No sellers on record yet."
         />
 
-        {/* Only the years the seller has traded in are worth offering. */}
-        {selected && years.length > 0 && (
+        {/* Only the years there are saudas in are worth offering. */}
+        {(selected || isAll) && years.length > 0 && (
           <div className="field">
             <label htmlFor="register-year">Financial year</label>
             <select
@@ -242,19 +251,20 @@ export default function SaudaRegister({
         )}
       </div>
 
-      {selected ? (
+      {selected || isAll ? (
         <SaudaList
           saudas={visible}
           loading={loadingSaudas}
-          sellerName={selected.name}
+          sellerName={isAll ? null : selected.name}
+          showSeller={isAll}
           onEdit={editSauda}
           onDelete={removeSauda}
           deletingId={deletingId}
         />
       ) : (
         <p className="muted">
-          Pick a seller to see their saudas. Not in the list? Type the name and choose “Add
-          new seller”.
+          Pick a seller (or “All”) to see their saudas. Not in the list? Type the name and
+          choose “Add new seller”.
         </p>
       )}
     </div>

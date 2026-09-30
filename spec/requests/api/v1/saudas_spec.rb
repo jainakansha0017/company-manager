@@ -29,17 +29,39 @@ RSpec.describe "Api::V1 saudas" do
       expect(json).to be_empty
     end
 
+    it "breaks a tie on the same date by sauda no., ascending" do
+      create(:sauda, company: company, seller: seller, sauda_date: Date.current, sauda_no: "S-0002")
+      create(:sauda, company: company, seller: seller, sauda_date: Date.current, sauda_no: "S-0001")
+
+      get "/api/v1/saudas", params: { company_id: company.id, seller_id: seller.id }
+
+      expect(json.map { |sauda| sauda["sauda_no"] }).to eq(%w[S-0001 S-0002])
+    end
+
     it "serialises the fields the register needs" do
       create(:sauda, company: company, seller: seller, buyer: buyer)
 
       get "/api/v1/saudas", params: { company_id: company.id, seller_id: seller.id }
 
       expect(json.first.keys).to match_array(
-        %w[id company_id seller_id buyer_id buyer_name sauda_no sauda_date bill_date
+        %w[id company_id seller_id buyer_id buyer_name seller_name sauda_no sauda_date bill_date
            tax_invoice_no destination transporter_name bilty_no bilty_date
-           amount discount_percent total_tax_bill_amt gst_amt disc_amt taxable_value
+           amount discount_percent credit_due total_tax_bill_amt gst_amt disc_amt taxable_value
            brokerage_amt total_kg created_at financial_year sauda_marks]
       )
+    end
+
+    # The "All" register: leaving seller_id off asks for every seller's
+    # saudas at once, named so they can be told apart.
+    it "returns every seller's saudas when seller_id is left off" do
+      other_seller = create(:seller)
+      mine = create(:sauda, company: company, seller: seller)
+      theirs = create(:sauda, company: company, seller: other_seller)
+
+      get "/api/v1/saudas"
+
+      expect(json.map { |sauda| sauda["id"] }).to contain_exactly(mine.id, theirs.id)
+      expect(json.map { |sauda| sauda["seller_name"] }).to contain_exactly(seller.name, other_seller.name)
     end
 
     # The screen narrows to a year from what it already has, so the JSON is the
@@ -135,6 +157,7 @@ RSpec.describe "Api::V1 saudas" do
           bilty_no: "BL-9921",
           bilty_date: "2026-09-24",
           discount_percent: "2.5",
+          credit_due: "500.00",
           sauda_marks_attributes: [
             {
               mark_id: mark.id,
@@ -159,6 +182,7 @@ RSpec.describe "Api::V1 saudas" do
       expect(response).to have_http_status(:created)
       expect(json["tax_invoice_no"]).to eq("TI-2026-118")
       expect(json["buyer_name"]).to eq(buyer.name)
+      expect(json["credit_due"].to_f).to eq(500.0)
     end
 
     # Nothing is company-specific any more: a sauda is created with no

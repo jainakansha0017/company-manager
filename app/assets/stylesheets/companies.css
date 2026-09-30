@@ -861,24 +861,29 @@ legend {
   background: #f7f9fc;
 }
 
-/* Shares add up to 100, allotted by what each column has to fit: a lakh figure
-   needs the room, a bag count does not, and words can always wrap. */
-.table.table--register col:nth-child(1) { width: 7%; }    /* Date */
-.table.table--register col:nth-child(2) { width: 7%; }    /* Tax invoice no. */
-.table.table--register col:nth-child(3) { width: 7%; }    /* Bill date */
-.table.table--register col:nth-child(4) { width: 6.5%; }  /* Destination */
-.table.table--register col:nth-child(5) { width: 7%; }    /* Buyer */
-.table.table--register col:nth-child(6) { width: 7%; }    /* Mark */
-.table.table--register col:nth-child(7) { width: 6%; }    /* Lot no. */
-.table.table--register col:nth-child(8) { width: 6%; }    /* Grade */
-.table.table--register col:nth-child(9) { width: 3.5%; }  /* Bags */
-.table.table--register col:nth-child(10) { width: 4.5%; } /* Kg */
-.table.table--register col:nth-child(11) { width: 7%; }   /* Total */
-.table.table--register col:nth-child(12) { width: 6%; }   /* GST */
-.table.table--register col:nth-child(13) { width: 6%; }   /* Discount */
-.table.table--register col:nth-child(14) { width: 6.5%; } /* Amount */
-.table.table--register col:nth-child(15) { width: 6%; }   /* Brokerage */
-.table.table--register col:nth-child(16) { width: 7%; }   /* Actions */
+/* Shares add up to around 100, allotted by what each column has to fit: a
+   lakh figure needs the room, a bag count does not, and words can always
+   wrap. Matched by class rather than position — the "All" register's Seller
+   column is only in the colgroup some of the time, which would otherwise
+   shift every nth-child index that follows it. */
+.table.table--register col.col-seller { width: 8%; }      /* Seller (All register only) */
+.table.table--register col.col-date { width: 7%; }        /* Date */
+.table.table--register col.col-invoice { width: 6%; }     /* Tax invoice no. */
+.table.table--register col.col-bill-date { width: 6%; }   /* Bill date */
+.table.table--register col.col-destination { width: 6%; } /* Destination */
+.table.table--register col.col-buyer { width: 6%; }       /* Buyer */
+.table.table--register col.col-mark { width: 6%; }        /* Mark */
+.table.table--register col.col-lot { width: 5%; }         /* Lot no. */
+.table.table--register col.col-grade { width: 5%; }       /* Grade */
+.table.table--register col.col-bags { width: 3%; }        /* Bags */
+.table.table--register col.col-kg { width: 4%; }          /* Kg */
+.table.table--register col.col-total { width: 6%; }       /* Total */
+.table.table--register col.col-gst { width: 5%; }         /* GST */
+.table.table--register col.col-discount { width: 5%; }    /* Discount */
+.table.table--register col.col-amount { width: 6%; }      /* Amount */
+.table.table--register col.col-brokerage { width: 5%; }   /* Brokerage */
+.table.table--register col.col-credit-due { width: 5%; }  /* Credit due */
+.table.table--register col.col-actions { width: 6%; }     /* Actions */
 
 .table {
   width: 100%;

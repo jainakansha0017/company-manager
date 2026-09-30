@@ -99,9 +99,10 @@ export const updateParty = (role, id, party) =>
 export const deleteParty = (role, id) =>
   request(`/api/v1/${role}s/${id}`, { method: "DELETE" });
 
-// The sauda register is always read one seller at a time.
+// Usually read one seller at a time; leaving sellerId off asks for every
+// seller's saudas at once (the "All" register).
 export const listSaudas = (sellerId) =>
-  request(`/api/v1/saudas?seller_id=${encodeURIComponent(sellerId)}`);
+  request(sellerId ? `/api/v1/saudas?seller_id=${encodeURIComponent(sellerId)}` : "/api/v1/saudas");
 
 // The same register as a file. A plain link rather than a fetch, so the browser
 // saves it itself; the session cookie rides along and keeps it behind the login.

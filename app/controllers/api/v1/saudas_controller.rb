@@ -5,17 +5,19 @@ module Api
 
       before_action :set_sauda, only: %i[show update destroy]
 
-      # Always read through the register: /api/v1/saudas?seller_id=2
-      # The same register downloads as a file at .xlsx and .pdf.
+      # Usually read through one seller's register: /api/v1/saudas?seller_id=2
+      # Leaving seller_id off is the "All" register — every seller at once.
+      # The same register downloads as a file at .xlsx and .pdf, which is only
+      # ever offered for a single seller.
       #
-      # The JSON is the seller's whole register: every sauda carries the
-      # financial year it falls in, and the screen narrows to one year from
-      # there without going back to the server. A download is a fresh request
-      # with nothing loaded, so `financial_year` narrows it here instead.
+      # The JSON is the register: every sauda carries the financial year it
+      # falls in, and the screen narrows to one year from there without going
+      # back to the server. A download is a fresh request with nothing loaded,
+      # so `financial_year` narrows it here instead.
       def index
-        scope = Sauda.where(seller_id: params[:seller_id])
-                     .includes(:buyer, sauda_marks: %i[mark sauda_grades])
-                     .ordered
+        scope = Sauda.all
+        scope = scope.where(seller_id: params[:seller_id]) if params[:seller_id].present?
+        scope = scope.includes(:seller, :buyer, sauda_marks: %i[mark sauda_grades]).ordered
 
         respond_to do |format|
           format.json { render json: scope.map { |sauda| serialize(sauda) } }
@@ -100,7 +102,7 @@ module Api
         # the kilos underneath it. discount_percent is the one figure entered.
         params.require(:sauda).permit(
           :company_id, :seller_id, :buyer_id, :sauda_no, :sauda_date, :bill_date,
-          :tax_invoice_no, :destination, :discount_percent,
+          :tax_invoice_no, :destination, :discount_percent, :credit_due,
           :transporter_name, :bilty_no, :bilty_date,
           sauda_marks_attributes: [
             :id, :mark_id, :lot_nos, :_destroy,
@@ -113,10 +115,13 @@ module Api
         sauda.as_json(
           only: %i[id company_id seller_id buyer_id sauda_no sauda_date bill_date
                    tax_invoice_no destination transporter_name bilty_no bilty_date
-                   amount discount_percent total_tax_bill_amt gst_amt disc_amt
+                   amount discount_percent credit_due total_tax_bill_amt gst_amt disc_amt
                    taxable_value brokerage_amt total_kg created_at]
         ).merge(
           "buyer_name" => sauda.buyer&.name,
+          # Only worth naming in the "All" register, but cheap enough to send
+          # every time rather than branching on whether seller_id was given.
+          "seller_name" => sauda.seller&.name,
           # Worked out here rather than in the browser, so the rule for where
           # April falls lives in one place.
           "financial_year" => sauda.financial_year,

@@ -250,5 +250,19 @@ RSpec.describe Sauda do
 
       expect(described_class.ordered).to eq([newer, older])
     end
+
+    it "breaks a tie on the same date by sauda no., ascending" do
+      second = create(:sauda, sauda_date: Date.current, sauda_no: "S-0002")
+      first = create(:sauda, sauda_date: Date.current, sauda_no: "S-0001")
+
+      expect(described_class.ordered).to eq([first, second])
+    end
+  end
+
+  it "rejects a negative credit due" do
+    sauda = build(:sauda, credit_due: -1)
+
+    expect(sauda).not_to be_valid
+    expect(sauda.errors[:credit_due]).to be_present
   end
 end

@@ -23,6 +23,7 @@ const blankValues = () => ({
   bilty_date: "",
   buyer_id: null,
   discount_percent: "",
+  credit_due: "",
 });
 
 // A saved sauda read back into what the form holds. Nulls become empty strings
@@ -38,6 +39,7 @@ const valuesFrom = (sauda) => ({
   bilty_date: sauda.bilty_date ?? "",
   buyer_id: sauda.buyer_id,
   discount_percent: sauda.discount_percent ?? "",
+  credit_due: sauda.credit_due ?? "",
 });
 
 // The grade text is rebuilt from the grades themselves, so editing it splits
@@ -550,6 +552,19 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
               <p className="field__error">{errorFor("discount_percent")}</p>
             )}
           </div>
+
+          <div className="field">
+            <label htmlFor="credit_due">Credit due</label>
+            <input
+              id="credit_due"
+              type="number"
+              min="0"
+              step="0.01"
+              value={values.credit_due}
+              onChange={setField("credit_due")}
+            />
+            {errorFor("credit_due") && <p className="field__error">{errorFor("credit_due")}</p>}
+          </div>
         </div>
 
         {derived ? (
@@ -615,6 +630,7 @@ const LABELS = {
   sauda_date: "sauda date",
   bill_date: "bill date",
   discount_percent: "discount %",
+  credit_due: "credit due",
 };
 
 const label = (attribute) => LABELS[attribute] ?? attribute.replace(/_/g, " ");

@@ -24,9 +24,11 @@ class Sauda < ApplicationRecord
   validates :discount_percent,
             numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 100 },
             allow_nil: true
+  validates :credit_due, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validate :must_have_a_mark
 
-  scope :ordered, -> { order(sauda_date: :desc, id: :desc) }
+  # Latest sauda date first; within the same date, sauda no. ascending.
+  scope :ordered, -> { order(sauda_date: :desc, sauda_no: :asc) }
 
   # "2025-2026" is 1 April 2025 to 31 March 2026. The short "2025-26" is read the
   # same way, since only the four digits it starts with are used. Anything that is

@@ -29,16 +29,29 @@ const gradeList = (mark) => mark.sauda_grades.map((entry) => entry.grade).join("
 const totalOf = (saudas, field) =>
   saudas.reduce((sum, sauda) => sum + Number(sauda[field] ?? 0), 0);
 
-export default function SaudaList({ saudas, loading, sellerName, onEdit, onDelete, deletingId }) {
+export default function SaudaList({
+  saudas,
+  loading,
+  sellerName,
+  showSeller = false,
+  onEdit,
+  onDelete,
+  deletingId,
+}) {
   if (loading) return <p className="muted">Loading saudas…</p>;
 
   if (saudas.length === 0) {
     return (
       <p className="muted">
-        No saudas for {sellerName} yet. Use “Add New Sauda” to create the first one.
+        {sellerName ? `No saudas for ${sellerName} yet. ` : "No saudas yet. "}
+        Use “Add New Sauda” to create the first one.
       </p>
     );
   }
+
+  // The Sauda band gains a leading Seller column only in the "All" register,
+  // where a row could belong to any of them.
+  const saudaColumns = showSeller ? 6 : 5;
 
   return (
     <>
@@ -56,6 +69,10 @@ export default function SaudaList({ saudas, loading, sellerName, onEdit, onDelet
           <dt>Total brokerage amt</dt>
           <dd>{money(totalOf(saudas, "brokerage_amt"))}</dd>
         </div>
+        <div className="totals__item">
+          <dt>Total credit due</dt>
+          <dd>{money(totalOf(saudas, "credit_due"))}</dd>
+        </div>
       </dl>
 
       <div className="table-scroll">
@@ -64,9 +81,24 @@ export default function SaudaList({ saudas, loading, sellerName, onEdit, onDelet
               the bands, whose cells each span five. The widths live here instead,
               in companies.css against `col`. */}
           <colgroup>
-            {Array.from({ length: 16 }, (_, index) => (
-              <col key={index} />
-            ))}
+            {showSeller && <col className="col-seller" />}
+            <col className="col-date" />
+            <col className="col-invoice" />
+            <col className="col-bill-date" />
+            <col className="col-destination" />
+            <col className="col-buyer" />
+            <col className="col-mark" />
+            <col className="col-lot" />
+            <col className="col-grade" />
+            <col className="col-bags" />
+            <col className="col-kg" />
+            <col className="col-total" />
+            <col className="col-gst" />
+            <col className="col-discount" />
+            <col className="col-amount" />
+            <col className="col-brokerage" />
+            <col className="col-credit-due" />
+            <col className="col-actions" />
           </colgroup>
 
           {/* Three bands: what the sauda is, what went out under each mark, and
@@ -74,16 +106,17 @@ export default function SaudaList({ saudas, loading, sellerName, onEdit, onDelet
               because the band above it says which of the three it belongs to. */}
           <thead>
             <tr className="table__bands">
-              <th colSpan={5}>Sauda</th>
+              <th colSpan={saudaColumns}>Sauda</th>
               <th colSpan={5} className="col--band-start">
                 Mark
               </th>
-              <th colSpan={5} className="col--band-start">
+              <th colSpan={6} className="col--band-start">
                 Bill
               </th>
               <th className="col--band-start" aria-label="Actions" />
             </tr>
             <tr>
+              {showSeller && <th>Seller</th>}
               <th>Date</th>
               <th>Tax invoice no.</th>
               <th>Bill date</th>
@@ -101,6 +134,7 @@ export default function SaudaList({ saudas, loading, sellerName, onEdit, onDelet
               <th className="numeric">Discount</th>
               <th className="numeric">Amount</th>
               <th className="numeric">Brokerage</th>
+              <th className="numeric">Credit due</th>
 
               <th className="col--band-start" />
             </tr>
@@ -122,6 +156,7 @@ export default function SaudaList({ saudas, loading, sellerName, onEdit, onDelet
                 >
                   {index === 0 && (
                     <>
+                      {showSeller && <td rowSpan={span}>{sauda.seller_name}</td>}
                       <td rowSpan={span}>{formatDate(sauda.sauda_date)}</td>
                       <td rowSpan={span}>{sauda.tax_invoice_no || "—"}</td>
                       <td rowSpan={span}>{sauda.bill_date ? formatDate(sauda.bill_date) : "—"}</td>
@@ -152,6 +187,9 @@ export default function SaudaList({ saudas, loading, sellerName, onEdit, onDelet
                       </td>
                       <td rowSpan={span} className="numeric">
                         {money(sauda.brokerage_amt)}
+                      </td>
+                      <td rowSpan={span} className="numeric">
+                        {money(sauda.credit_due)}
                       </td>
 
                       {/* Edit and delete act on the whole sauda, so like its
