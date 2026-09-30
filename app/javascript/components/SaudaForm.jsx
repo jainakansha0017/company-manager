@@ -383,6 +383,35 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
       )}
 
       <fieldset>
+        <legend>Sauda</legend>
+        <div className="grid">
+          <div className="field">
+            <label htmlFor="sauda_no">Sauda no.</label>
+            <input
+              id="sauda_no"
+              type="text"
+              value={values.sauda_no}
+              onChange={setField("sauda_no")}
+            />
+            {errorFor("sauda_no") && <p className="field__error">{errorFor("sauda_no")}</p>}
+          </div>
+
+          <div className="field">
+            <label htmlFor="sauda_date">
+              Sauda date<span className="field__required"> *</span>
+            </label>
+            <input
+              id="sauda_date"
+              type="date"
+              value={values.sauda_date}
+              onChange={setField("sauda_date")}
+            />
+            {errorFor("sauda_date") && <p className="field__error">{errorFor("sauda_date")}</p>}
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
         <legend>Marks</legend>
         {lines.map((line, index) => (
           <SaudaMarkFields
@@ -426,30 +455,6 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
             placeholder="Type a seller name…"
             emptyMessage="No sellers on record yet."
           />
-
-          <div className="field">
-            <label htmlFor="sauda_no">Sauda no.</label>
-            <input
-              id="sauda_no"
-              type="text"
-              value={values.sauda_no}
-              onChange={setField("sauda_no")}
-            />
-            {errorFor("sauda_no") && <p className="field__error">{errorFor("sauda_no")}</p>}
-          </div>
-
-          <div className="field">
-            <label htmlFor="sauda_date">
-              Sauda date<span className="field__required"> *</span>
-            </label>
-            <input
-              id="sauda_date"
-              type="date"
-              value={values.sauda_date}
-              onChange={setField("sauda_date")}
-            />
-            {errorFor("sauda_date") && <p className="field__error">{errorFor("sauda_date")}</p>}
-          </div>
 
           <div className="field">
             <label htmlFor="bill_date">Bill date</label>
