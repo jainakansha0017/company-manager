@@ -861,6 +861,12 @@ legend {
   background: #f7f9fc;
 }
 
+/* A row opens the sauda detail modal; the Edit/Delete buttons stop that click
+   from reaching the row, so the cursor is the only hint here. */
+.table__row--clickable {
+  cursor: pointer;
+}
+
 /* Shares add up to around 100, allotted by what each column has to fit: a
    lakh figure needs the room, a bag count does not, and words can always
    wrap. Matched by class rather than position — the "All" register's Seller
@@ -882,7 +888,6 @@ legend {
 .table.table--register col.col-discount { width: 5%; }    /* Discount */
 .table.table--register col.col-amount { width: 6%; }      /* Amount */
 .table.table--register col.col-brokerage { width: 5%; }   /* Brokerage */
-.table.table--register col.col-credit-due { width: 5%; }  /* Credit due */
 .table.table--register col.col-actions { width: 6%; }     /* Actions */
 
 .table {
@@ -1077,4 +1082,78 @@ legend {
 
 .derived__row--total dt {
   color: var(--text);
+}
+
+/* The whole-sauda detail view, opened from a row click. Sits above the nav
+   drawer (z-index 30) and everything else on the page. */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(31, 41, 51, 0.45);
+  z-index: 40;
+  padding: 20px;
+}
+
+.modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 10px;
+  padding: 24px;
+}
+
+.modal__title {
+  margin: 0 0 16px;
+  font-size: 18px;
+}
+
+.modal__subtitle {
+  margin: 20px 0 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.modal__fields {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 0;
+}
+
+.modal__fields dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.modal__fields dd {
+  margin: 0;
+  font-weight: 500;
+}
+
+.modal__mark {
+  margin-bottom: 12px;
+}
+
+.modal__mark-name {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.modal__grades {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
 }

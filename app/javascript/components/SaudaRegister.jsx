@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { deleteSauda, listParties, listSaudas, saudaRegisterUrl } from "../lib/api";
 import Combobox from "./Combobox";
 import SaudaList from "./SaudaList";
+import SaudaDetailModal from "./SaudaDetailModal";
 
 // What the year dropdown means when nothing is being narrowed to.
 const ALL_YEARS = "";
@@ -41,6 +42,7 @@ export default function SaudaRegister({
   const [loadingSaudas, setLoadingSaudas] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [year, setYear] = useState(ALL_YEARS);
+  const [viewingSauda, setViewingSauda] = useState(null);
 
   useEffect(() => {
     let current = true;
@@ -257,6 +259,7 @@ export default function SaudaRegister({
           loading={loadingSaudas}
           sellerName={isAll ? null : selected.name}
           showSeller={isAll}
+          onView={setViewingSauda}
           onEdit={editSauda}
           onDelete={removeSauda}
           deletingId={deletingId}
@@ -266,6 +269,17 @@ export default function SaudaRegister({
           Pick a seller (or “All”) to see their saudas. Not in the list? Type the name and
           choose “Add new seller”.
         </p>
+      )}
+
+      {viewingSauda && (
+        <SaudaDetailModal
+          sauda={viewingSauda}
+          onClose={() => setViewingSauda(null)}
+          onEdit={(sauda) => {
+            setViewingSauda(null);
+            editSauda(sauda);
+          }}
+        />
       )}
     </div>
   );

@@ -251,11 +251,11 @@ RSpec.describe Sauda do
       expect(described_class.ordered).to eq([newer, older])
     end
 
-    it "breaks a tie on the same date by sauda no., ascending" do
+    it "breaks a tie on the same date by sauda no., descending" do
       second = create(:sauda, sauda_date: Date.current, sauda_no: "S-0002")
       first = create(:sauda, sauda_date: Date.current, sauda_no: "S-0001")
 
-      expect(described_class.ordered).to eq([first, second])
+      expect(described_class.ordered).to eq([second, first])
     end
   end
 

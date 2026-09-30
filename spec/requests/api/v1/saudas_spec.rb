@@ -29,13 +29,13 @@ RSpec.describe "Api::V1 saudas" do
       expect(json).to be_empty
     end
 
-    it "breaks a tie on the same date by sauda no., ascending" do
+    it "breaks a tie on the same date by sauda no., descending" do
       create(:sauda, company: company, seller: seller, sauda_date: Date.current, sauda_no: "S-0002")
       create(:sauda, company: company, seller: seller, sauda_date: Date.current, sauda_no: "S-0001")
 
       get "/api/v1/saudas", params: { company_id: company.id, seller_id: seller.id }
 
-      expect(json.map { |sauda| sauda["sauda_no"] }).to eq(%w[S-0001 S-0002])
+      expect(json.map { |sauda| sauda["sauda_no"] }).to eq(%w[S-0002 S-0001])
     end
 
     it "serialises the fields the register needs" do

@@ -8,7 +8,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
 // toLocaleDateString, which abbreviates September to the wider "Sept" in every
 // day-first English locale and so wraps the column. Reading the parts straight
 // off the string also keeps a timezone from shifting the day.
-const formatDate = (value) => {
+export const formatDate = (value) => {
   const [year, month, day] = value.split("-");
   return `${day} ${MONTHS[Number(month) - 1]} ${year}`;
 };
@@ -34,6 +34,7 @@ export default function SaudaList({
   loading,
   sellerName,
   showSeller = false,
+  onView,
   onEdit,
   onDelete,
   deletingId,
@@ -69,10 +70,6 @@ export default function SaudaList({
           <dt>Total brokerage amt</dt>
           <dd>{money(totalOf(saudas, "brokerage_amt"))}</dd>
         </div>
-        <div className="totals__item">
-          <dt>Total credit due</dt>
-          <dd>{money(totalOf(saudas, "credit_due"))}</dd>
-        </div>
       </dl>
 
       <div className="table-scroll">
@@ -97,7 +94,6 @@ export default function SaudaList({
             <col className="col-discount" />
             <col className="col-amount" />
             <col className="col-brokerage" />
-            <col className="col-credit-due" />
             <col className="col-actions" />
           </colgroup>
 
@@ -110,7 +106,7 @@ export default function SaudaList({
               <th colSpan={5} className="col--band-start">
                 Mark
               </th>
-              <th colSpan={6} className="col--band-start">
+              <th colSpan={5} className="col--band-start">
                 Bill
               </th>
               <th className="col--band-start" aria-label="Actions" />
@@ -134,7 +130,6 @@ export default function SaudaList({
               <th className="numeric">Discount</th>
               <th className="numeric">Amount</th>
               <th className="numeric">Brokerage</th>
-              <th className="numeric">Credit due</th>
 
               <th className="col--band-start" />
             </tr>
@@ -152,7 +147,8 @@ export default function SaudaList({
               return marks.map((mark, index) => (
                 <tr
                   key={mark ? `${sauda.id}-${mark.id}` : sauda.id}
-                  className={`${index === 0 ? "table__row--sauda" : ""}${tint}`}
+                  className={`table__row--clickable ${index === 0 ? "table__row--sauda" : ""}${tint}`}
+                  onClick={() => onView(sauda)}
                 >
                   {index === 0 && (
                     <>
@@ -188,9 +184,6 @@ export default function SaudaList({
                       <td rowSpan={span} className="numeric">
                         {money(sauda.brokerage_amt)}
                       </td>
-                      <td rowSpan={span} className="numeric">
-                        {money(sauda.credit_due)}
-                      </td>
 
                       {/* Edit and delete act on the whole sauda, so like its
                           other columns they sit beside all of its marks. */}
@@ -199,14 +192,20 @@ export default function SaudaList({
                           <button
                             type="button"
                             className="button button--small"
-                            onClick={() => onEdit(sauda)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onEdit(sauda);
+                            }}
                           >
                             Edit
                           </button>
                           <button
                             type="button"
                             className="button button--small button--danger"
-                            onClick={() => onDelete(sauda)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              onDelete(sauda);
+                            }}
                             disabled={deletingId === sauda.id}
                           >
                             {deletingId === sauda.id ? "Deleting…" : "Delete"}
