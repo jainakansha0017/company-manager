@@ -25,6 +25,9 @@ class Sauda < ApplicationRecord
             numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 100 },
             allow_nil: true
   validates :credit_due, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+  # A sauda no. names one deal, and the same number turning up twice anywhere
+  # in the application almost always means two entries for the one sauda.
+  validates :sauda_no, uniqueness: { case_sensitive: false }, allow_blank: true
   validate :must_have_a_mark
 
   # Latest sauda date first; within the same date, sauda no. descending too.

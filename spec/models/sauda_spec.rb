@@ -259,6 +259,20 @@ RSpec.describe Sauda do
     end
   end
 
+  it "rejects a sauda no. already used anywhere, case-insensitively" do
+    create(:sauda, sauda_no: "S-0001")
+    sauda = build(:sauda, sauda_no: "s-0001")
+
+    expect(sauda).not_to be_valid
+    expect(sauda.errors[:sauda_no]).to be_present
+  end
+
+  it "allows more than one sauda with a blank sauda no." do
+    create(:sauda, sauda_no: "")
+
+    expect(build(:sauda, sauda_no: "")).to be_valid
+  end
+
   it "rejects a negative credit due" do
     sauda = build(:sauda, credit_due: -1)
 

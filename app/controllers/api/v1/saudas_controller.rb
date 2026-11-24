@@ -31,6 +31,24 @@ module Api
         render json: serialize(@sauda)
       end
 
+      # Checked as the sauda no. field is typed, rather than waiting for a
+      # submit to find out it is already taken. `exclude_id` leaves out the
+      # sauda being edited, so saving it back unchanged is not flagged as a
+      # clash with itself.
+      def check_sauda_no
+        sauda_no = params[:sauda_no].to_s.strip
+        scope = Sauda.where("lower(sauda_no) = ?", sauda_no.downcase)
+        scope = scope.where.not(id: params[:exclude_id]) if params[:exclude_id].present?
+
+        render json: { available: sauda_no.blank? || !scope.exists? }
+      end
+
+      # The date the most recently entered sauda (by when it was saved, not by
+      # its own sauda_date) carries, used to default a new form's date field.
+      def last_entry_date
+        render json: { sauda_date: Sauda.order(created_at: :desc).limit(1).pick(:sauda_date) }
+      end
+
       def create
         sauda = Sauda.new(sauda_params)
 

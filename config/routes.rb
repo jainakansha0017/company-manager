@@ -15,7 +15,15 @@ Rails.application.routes.draw do
       # The register also downloads, at .xlsx and .pdf. An extension in the path
       # wins over the default, so asking for neither still gets the JSON.
       resources :saudas, only: %i[index show create update destroy],
-                         defaults: { format: :json }
+                         defaults: { format: :json } do
+        collection do
+          # Live uniqueness check while the sauda no. field is being typed, and
+          # the date the last sauda anywhere was entered on, to default a new
+          # form's date field to.
+          get :check_sauda_no
+          get :last_entry_date
+        end
+      end
       resources :marks, only: %i[index create destroy]
     end
   end

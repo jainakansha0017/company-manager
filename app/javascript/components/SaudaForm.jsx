@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
-  createMark, createSauda, getSauda, listMarks, listParties, updateSauda,
+  checkSaudaNoAvailable, createMark, createSauda, getLastEntryDate, getSauda, listMarks,
+  listParties, updateSauda,
 } from "../lib/api";
 import Combobox from "./Combobox";
 import SaudaMarkFields, { formatKg, formatMoney, gradeAmount, kilos } from "./SaudaMarkFields";
@@ -85,12 +86,18 @@ const deriveAmounts = (lines, discountPercent) => {
   const taxableValue = round2(amount - discAmt);
   const gstAmt = round2(taxableValue * GST_RATE);
 
+  const totalTaxBillAmt = round2(taxableValue + gstAmt);
+  const finalAmount = Math.round(totalTaxBillAmt);
+
   return {
     amount,
     discAmt,
     taxableValue,
     gstAmt,
-    totalTaxBillAmt: round2(taxableValue + gstAmt),
+    totalTaxBillAmt,
+    // Rounded off to the nearest rupee, the way the bill is actually settled.
+    roundOff: round2(finalAmount - totalTaxBillAmt),
+    finalAmount,
   };
 };
 
@@ -145,6 +152,9 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
   );
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  // Checked live, independently of the errors a submit comes back with, so
+  // typing a number already on record says so straight away.
+  const [saudaNoTaken, setSaudaNoTaken] = useState(false);
 
   const editing = Boolean(saudaId);
 
@@ -183,6 +193,50 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
       current = false;
     };
   }, [saudaId, draft]);
+
+  // A brand new sauda starts dated the same as the last one entered, not
+  // today — most are entered in batches on the one day's goods. Only for a
+  // fresh form: an edit already carries its own date, and a parked draft is
+  // newer than either.
+  useEffect(() => {
+    if (saudaId || draft) return undefined;
+
+    let current = true;
+
+    getLastEntryDate()
+      .then(({ sauda_date }) => {
+        if (current && sauda_date) setValues((v) => ({ ...v, sauda_date }));
+      })
+      .catch(() => {});
+
+    return () => {
+      current = false;
+    };
+  }, [saudaId, draft]);
+
+  // A sauda no. has to be unique everywhere, not just within a seller, so
+  // this is checked against the whole table as it's typed rather than only
+  // when the form is submitted. Debounced so every keystroke doesn't fire a
+  // request; `saudaId` leaves the sauda being edited out of its own check.
+  useEffect(() => {
+    const saudaNo = values.sauda_no.trim();
+    if (!saudaNo) {
+      setSaudaNoTaken(false);
+      return undefined;
+    }
+
+    let current = true;
+    const timer = setTimeout(() => {
+      checkSaudaNoAvailable(saudaNo, saudaId)
+        .then(({ available }) => current && setSaudaNoTaken(!available))
+        .catch(() => {});
+    }, 400);
+
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [values.sauda_no, saudaId]);
 
   useEffect(() => {
     let current = true;
@@ -386,17 +440,6 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
         <legend>Sauda</legend>
         <div className="grid">
           <div className="field">
-            <label htmlFor="sauda_no">Sauda no.</label>
-            <input
-              id="sauda_no"
-              type="text"
-              value={values.sauda_no}
-              onChange={setField("sauda_no")}
-            />
-            {errorFor("sauda_no") && <p className="field__error">{errorFor("sauda_no")}</p>}
-          </div>
-
-          <div className="field">
             <label htmlFor="sauda_date">
               Sauda date<span className="field__required"> *</span>
             </label>
@@ -407,6 +450,20 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
               onChange={setField("sauda_date")}
             />
             {errorFor("sauda_date") && <p className="field__error">{errorFor("sauda_date")}</p>}
+          </div>
+
+          <div className="field">
+            <label htmlFor="sauda_no">Sauda no.</label>
+            <input
+              id="sauda_no"
+              type="text"
+              value={values.sauda_no}
+              onChange={setField("sauda_no")}
+            />
+            {saudaNoTaken && !errorFor("sauda_no") && (
+              <p className="field__error">That sauda no. is already in use.</p>
+            )}
+            {errorFor("sauda_no") && <p className="field__error">{errorFor("sauda_no")}</p>}
           </div>
         </div>
       </fieldset>
@@ -600,6 +657,14 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
                 <dd>{formatMoney(round2(brokerageBasis.of(derived) * BROKERAGE_RATE))}</dd>
               </div>
             )}
+            <div className="derived__row">
+              <dt>Round off</dt>
+              <dd>{formatMoney(derived.roundOff)}</dd>
+            </div>
+            <div className="derived__row derived__row--total">
+              <dt>Final amount</dt>
+              <dd>{formatMoney(derived.finalAmount)}</dd>
+            </div>
           </dl>
         ) : (
           <p className="muted">

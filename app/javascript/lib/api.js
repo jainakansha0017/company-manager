@@ -125,6 +125,19 @@ export const updateSauda = (id, sauda) =>
 
 export const deleteSauda = (id) => request(`/api/v1/saudas/${id}`, { method: "DELETE" });
 
+// Checked while the sauda no. field is typed. `excludeId` leaves out the
+// sauda being edited, so saving it back unchanged is not flagged as taken.
+export const checkSaudaNoAvailable = (saudaNo, excludeId) => {
+  const params = new URLSearchParams({ sauda_no: saudaNo });
+  if (excludeId) params.set("exclude_id", excludeId);
+
+  return request(`/api/v1/saudas/check_sauda_no?${params}`);
+};
+
+// The date the most recently entered sauda carries, used to default a new
+// form's date field to the last entry's date rather than today's.
+export const getLastEntryDate = () => request("/api/v1/saudas/last_entry_date");
+
 // Marks belong to a seller, and can be created from the sauda form itself.
 // Leaving off sellerId lists every seller's marks, so one can be picked
 // before the seller itself has been.

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_30_100000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_24_072426) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -117,6 +117,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_30_100000) do
     t.date "bilty_date"
     t.decimal "brokerage_amt", precision: 12, scale: 2
     t.decimal "credit_due", precision: 12, scale: 2
+    t.index "lower((sauda_no)::text)", name: "index_saudas_on_lower_sauda_no_uniq", unique: true, where: "((sauda_no)::text <> ''::text)"
     t.index ["buyer_id"], name: "index_saudas_on_buyer_id"
     t.index ["company_id", "sauda_date"], name: "index_saudas_on_company_id_and_sauda_date"
     t.index ["company_id", "sauda_no"], name: "index_saudas_on_company_id_and_sauda_no"
