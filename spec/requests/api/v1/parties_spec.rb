@@ -102,13 +102,25 @@ RSpec.describe "Api::V1 buyers and sellers" do
           expect(json["errors"]).to have_key("gst_no")
         end
 
-        it "rejects a record with no bank account" do
-          params = valid_params.deep_merge(role => { bank_accounts_attributes: [] })
+        if role == "buyer"
+          # Buyers are paid, never paid out to, so there is no account of
+          # theirs to keep on file.
+          it "accepts a record with no bank account" do
+            params = valid_params.deep_merge(role => { bank_accounts_attributes: [] })
 
-          post path, params: params, as: :json
+            expect { post path, params: params, as: :json }.not_to change(BankAccount, :count)
 
-          expect(response).to have_http_status(:unprocessable_content)
-          expect(json["errors"]).to have_key("bank_accounts")
+            expect(response).to have_http_status(:created)
+          end
+        else
+          it "rejects a record with no bank account" do
+            params = valid_params.deep_merge(role => { bank_accounts_attributes: [] })
+
+            post path, params: params, as: :json
+
+            expect(response).to have_http_status(:unprocessable_content)
+            expect(json["errors"]).to have_key("bank_accounts")
+          end
         end
 
       end
@@ -135,16 +147,32 @@ RSpec.describe "Api::V1 buyers and sellers" do
             .to contain_exactly("Renamed Bank", "Brand New Bank")
         end
 
-        it "refuses to remove the last bank account" do
-          record = create(factory, bank_account_count: 1)
-          account = record.bank_accounts.first
+        if role == "buyer"
+          # A buyer has none to keep on file, so removing its only one just
+          # leaves it with none rather than being refused.
+          it "allows removing the last bank account" do
+            record = create(factory, bank_account_count: 1)
+            account = record.bank_accounts.first
 
-          patch "#{path}/#{record.id}", params: {
-            role => { bank_accounts_attributes: [{ id: account.id, _destroy: true }] }
-          }, as: :json
+            patch "#{path}/#{record.id}", params: {
+              role => { bank_accounts_attributes: [{ id: account.id, _destroy: true }] }
+            }, as: :json
 
-          expect(response).to have_http_status(:unprocessable_content)
-          expect(record.reload.bank_accounts.count).to eq(1)
+            expect(response).to have_http_status(:ok)
+            expect(record.reload.bank_accounts.count).to eq(0)
+          end
+        else
+          it "refuses to remove the last bank account" do
+            record = create(factory, bank_account_count: 1)
+            account = record.bank_accounts.first
+
+            patch "#{path}/#{record.id}", params: {
+              role => { bank_accounts_attributes: [{ id: account.id, _destroy: true }] }
+            }, as: :json
+
+            expect(response).to have_http_status(:unprocessable_content)
+            expect(record.reload.bank_accounts.count).to eq(1)
+          end
         end
 
         it "404s for an id belonging to the other role" do

@@ -45,8 +45,11 @@ module BusinessEntity
   private
 
   # Records marked for destruction are still in the association until save, so
-  # `presence` alone would let an update delete every account.
+  # `presence` alone would let an update delete every account. Buyers alone are
+  # exempt: nothing is ever paid out to one, so there is no account of theirs
+  # to keep on file.
   def must_keep_one_bank_account
+    return if is_a?(Buyer)
     return if bank_accounts.reject(&:marked_for_destruction?).any?
 
     errors.add(:bank_accounts, "must include at least one account")

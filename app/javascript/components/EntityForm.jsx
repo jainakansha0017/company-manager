@@ -41,6 +41,7 @@ export default function EntityForm({
   prefill,
   includeFinancialYear = false,
   includeBrokerage = false,
+  includeBankAccounts = true,
   onSubmit,
   onSaved,
   onCancel,
@@ -103,7 +104,9 @@ export default function EntityForm({
     try {
       const saved = await onSubmit({
         ...values,
-        bank_accounts_attributes: [...bankAccounts, ...removedBankAccounts],
+        ...(includeBankAccounts
+          ? { bank_accounts_attributes: [...bankAccounts, ...removedBankAccounts] }
+          : {}),
       });
       onSaved(saved);
     } catch (error) {
@@ -234,22 +237,24 @@ export default function EntityForm({
           })}
       </fieldset>
 
-      <fieldset>
-        <legend>Bank accounts</legend>
-        {bankAccounts.map((account, index) => (
-          <BankAccountFields
-            key={account.id ?? `new-${index}`}
-            index={index}
-            account={account}
-            errors={errors}
-            onChange={updateBankAccount}
-            onRemove={bankAccounts.length > 1 ? removeBankAccount : null}
-          />
-        ))}
-        <button type="button" className="button" onClick={addBankAccount}>
-          + Add another bank
-        </button>
-      </fieldset>
+      {includeBankAccounts && (
+        <fieldset>
+          <legend>Bank accounts</legend>
+          {bankAccounts.map((account, index) => (
+            <BankAccountFields
+              key={account.id ?? `new-${index}`}
+              index={index}
+              account={account}
+              errors={errors}
+              onChange={updateBankAccount}
+              onRemove={bankAccounts.length > 1 ? removeBankAccount : null}
+            />
+          ))}
+          <button type="button" className="button" onClick={addBankAccount}>
+            + Add another bank
+          </button>
+        </fieldset>
+      )}
 
       <div className="form-actions">
         <button type="submit" className="button button--primary" disabled={submitting}>

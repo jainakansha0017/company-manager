@@ -18,8 +18,14 @@ RSpec.describe Party do
     expect(Party.reflect_on_association(:company)).to be_nil
   end
 
-  it "requires at least one bank account" do
-    expect(build(:buyer, bank_account_count: 0)).not_to be_valid
+  it "requires at least one bank account, for a seller" do
+    expect(build(:seller, bank_account_count: 0)).not_to be_valid
+  end
+
+  # Buyers are paid, never paid out to, so there is no account of theirs to
+  # keep on file.
+  it "does not require a bank account for a buyer" do
+    expect(build(:buyer, bank_account_count: 0)).to be_valid
   end
 
   it "has no financial year of its own" do
