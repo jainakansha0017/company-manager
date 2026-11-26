@@ -121,7 +121,7 @@ export default function SaudaList({
               {showSaudaNo && <th>Sauda no.</th>}
               <th>Date</th>
               <th>Tax invoice no.</th>
-              <th>Bill date</th>
+              <th>Tax invoice date</th>
               <th>Destination</th>
               <th>Buyer</th>
 

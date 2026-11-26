@@ -124,19 +124,20 @@ module Api
       end
 
       def sauda_params
-        # amount and the four figures worked out from it are deliberately absent:
-        # the model prices the grades at their rates and takes the bill from
-        # there, so accepting them would only invite a bill that disagrees with
-        # the kilos underneath it. discount_percent is the one figure entered.
+        # amount and the figures worked out from it are deliberately absent, on
+        # both the sauda and its bills: the model prices the grades at their
+        # rates and takes each bill from there, so accepting them would only
+        # invite a bill that disagrees with the kilos underneath it.
+        # discount_percent is the one figure entered, and now each bill's own.
         params.require(:sauda).permit(
           :company_id, :seller_id, :buyer_id, :sauda_no, :sauda_date,
-          :destination, :discount_percent, :credit_due, :transporter_name,
+          :destination, :credit_due, :transporter_name, :bilty_no, :bilty_date,
           sauda_marks_attributes: [
             :id, :mark_id, :lot_nos, :_destroy,
             { sauda_grades_attributes: %i[id grade bags weight rate _destroy] }
           ],
           sauda_bills_attributes: [
-            :id, :bill_no, :bill_date, :bilty_no, :bilty_date, :lot_nos, :_destroy
+            :id, :bill_no, :bill_date, :lot_nos, :discount_percent, :_destroy
           ]
         )
       end
@@ -144,8 +145,8 @@ module Api
       def serialize(sauda)
         sauda.as_json(
           only: %i[id company_id seller_id buyer_id sauda_no sauda_date
-                   destination transporter_name
-                   amount discount_percent credit_due total_tax_bill_amt gst_amt disc_amt
+                   destination transporter_name bilty_no bilty_date
+                   amount credit_due total_tax_bill_amt gst_amt disc_amt
                    taxable_value brokerage_amt total_kg created_at]
         ).merge(
           "buyer_name" => sauda.buyer&.name,
@@ -177,7 +178,10 @@ module Api
       end
 
       def serialize_bill(sauda_bill)
-        sauda_bill.as_json(only: %i[id bill_no bill_date bilty_no bilty_date lot_nos])
+        sauda_bill.as_json(
+          only: %i[id bill_no bill_date lot_nos discount_percent total_kg
+                    amount disc_amt taxable_value gst_amt total_tax_bill_amt brokerage_amt]
+        )
       end
     end
   end

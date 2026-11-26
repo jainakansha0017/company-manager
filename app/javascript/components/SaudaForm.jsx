@@ -16,15 +16,16 @@ const blankLine = () => ({ markId: null, lotNos: "", gradeText: "", grades: [] }
 // `lotNos` is an array of lot nos picked from those entered under Marks, only
 // meaningful once "All" is unchecked — while it is checked this one bill
 // stands for every lot, same as a sauda that has never been split.
-const blankBill = () => ({ billNo: "", billDate: "", biltyNo: "", biltyDate: "", lotNos: [] });
+const blankBill = () => ({ billNo: "", billDate: "", discountPercent: "", lotNos: [] });
 
 const blankValues = () => ({
   sauda_no: "",
   sauda_date: today(),
   destination: "",
   transporter_name: "",
+  bilty_no: "",
+  bilty_date: "",
   buyer_id: null,
-  discount_percent: "",
   credit_due: "",
 });
 
@@ -35,8 +36,9 @@ const valuesFrom = (sauda) => ({
   sauda_date: sauda.sauda_date ?? "",
   destination: sauda.destination ?? "",
   transporter_name: sauda.transporter_name ?? "",
+  bilty_no: sauda.bilty_no ?? "",
+  bilty_date: sauda.bilty_date ?? "",
   buyer_id: sauda.buyer_id,
-  discount_percent: sauda.discount_percent ?? "",
   credit_due: sauda.credit_due ?? "",
 });
 
@@ -45,8 +47,7 @@ const billsFrom = (sauda) =>
   sauda.sauda_bills.map((bill) => ({
     billNo: bill.bill_no ?? "",
     billDate: bill.bill_date ?? "",
-    biltyNo: bill.bilty_no ?? "",
-    biltyDate: bill.bilty_date ?? "",
+    discountPercent: bill.discount_percent ?? "",
     lotNos: splitList(bill.lot_nos ?? ""),
   }));
 
@@ -82,15 +83,40 @@ const BROKERAGE_BASES = {
 
 const round2 = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
 
-// The amount is the priced grades added up, not something anyone types.
-const priceLines = (lines) => {
-  const priced = lines.flatMap((line) => line.grades.map(gradeAmount)).filter((v) => v !== null);
+// Mirrors Sauda#grades_for_bill: every grade of every mark line, when it has
+// been given no lot nos of its own and it is the only bill there is ("All",
+// covering every lot by definition, since nothing else exists to bill the
+// rest); otherwise, from each mark line, only the grade entered in the same
+// position as a lot no. the bill was given — the first grade typed prices
+// the first lot, the second grade the second lot, and so on — none at all,
+// until it's given any lot nos, rather than every lot by default.
+const gradesForBill = (lines, bill, isOnlyBill) => {
+  if (isOnlyBill && bill.lotNos.length === 0) return lines.flatMap((line) => line.grades);
+
+  return lines.flatMap((line) => {
+    const lotNos = splitList(line.lotNos);
+
+    return bill.lotNos
+      .map((lotNo) => line.grades[lotNos.indexOf(lotNo)])
+      .filter(Boolean);
+  });
+};
+
+// Mirrors SaudaMark#amount and SaudaBill#recalculate_amounts: this bill's
+// amount is priced straight from its own grades — only the ones lined up
+// with the lot nos this bill was given — not a kg share of the sauda's
+// total, since lots can be rated differently from one another and dividing
+// proportionally would misprice a bill whenever its lots' rates differ from
+// the rest.
+const billAmount = (lines, bill, isOnlyBill) => {
+  const priced = gradesForBill(lines, bill, isOnlyBill).map(gradeAmount).filter((v) => v !== null);
 
   return priced.length ? priced.reduce((sum, value) => sum + value, 0) : null;
 };
 
-const deriveAmounts = (lines, discountPercent) => {
-  const amount = priceLines(lines);
+// Mirrors SaudaBill#recalculate_amounts: this bill's own amount, discounted,
+// taxed and totalled at this bill's own rate.
+const deriveBillAmounts = (amount, discountPercent) => {
   if (amount === null) return null;
 
   const discAmt = round2((amount * (Number(discountPercent) || 0)) / 100);
@@ -348,12 +374,16 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
         : bills[index].lotNos.filter((entry) => entry !== lotNo),
     });
 
-  // Unchecking "All" just opens up the lot-no picker on the one bill there
-  // already is; checking it back collapses to that same one bill, with
-  // whatever lots it had picked let go since it now stands for all of them.
+  // Unchecking "All" leaves the single bill in place but ticks off the first
+  // lot entered under Marks, so its amount shows up straightaway rather than
+  // sitting at zero until a lot is checked by hand; further bills, and which
+  // lots they cover, are still up to "+ Add another bill" and the checkboxes.
+  // Checking it back collapses to that one bill standing for every lot again.
   const setAllLotsMode = (checked) => {
     setAllLots(checked);
-    if (checked) setBills((current) => [{ ...current[0], lotNos: [] }]);
+    setBills((current) => [
+      { ...current[0], lotNos: checked || !availableLotNos.length ? [] : [availableLotNos[0]] },
+    ]);
   };
 
   // Marks are just a name, so "add new" saves one and selects it without
@@ -429,8 +459,7 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
       sauda_bills_attributes: bills.map((bill) => ({
         bill_no: bill.billNo,
         bill_date: bill.billDate,
-        bilty_no: bill.biltyNo,
-        bilty_date: bill.biltyDate,
+        discount_percent: bill.discountPercent,
         lot_nos: allLots ? "" : bill.lotNos.join("; "),
       })),
     };
@@ -453,7 +482,6 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
 
   const seller = sellers.find((entry) => String(entry.id) === String(selectedSellerId)) ?? null;
   const markOptions = marks;
-  const derived = deriveAmounts(lines, values.discount_percent);
   const brokerageBasis = BROKERAGE_BASES[seller?.brokerage_basis];
 
   if (loading || loadingSauda) return <p className="muted">Loading…</p>;
@@ -553,122 +581,6 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
       </fieldset>
 
       <fieldset>
-        <legend>Billing</legend>
-        <label className="field field--checkbox">
-          <input
-            type="checkbox"
-            checked={allLots}
-            onChange={(event) => setAllLotsMode(event.target.checked)}
-          />
-          All (one bill covers every lot)
-        </label>
-
-        {bills.map((bill, index) => (
-          <div className="sauda-bill" key={index}>
-            <div className="sauda-bill__header">
-              <h3>Bill {index + 1}</h3>
-              {!allLots && bills.length > 1 && (
-                <button
-                  type="button"
-                  className="button button--small"
-                  onClick={() => removeBill(index)}
-                >
-                  Remove bill
-                </button>
-              )}
-            </div>
-
-            <div className="grid">
-              <div className="field">
-                <label htmlFor={`bill_no_${index}`}>Bill no.</label>
-                <input
-                  id={`bill_no_${index}`}
-                  type="text"
-                  value={bill.billNo}
-                  onChange={(event) => updateBill(index, { billNo: event.target.value })}
-                />
-                {errorFor(`sauda_bills[${index}].bill_no`) && (
-                  <p className="field__error">{errorFor(`sauda_bills[${index}].bill_no`)}</p>
-                )}
-              </div>
-
-              <div className="field">
-                <label htmlFor={`bill_date_${index}`}>Bill date</label>
-                <input
-                  id={`bill_date_${index}`}
-                  type="date"
-                  value={bill.billDate}
-                  onChange={(event) => updateBill(index, { billDate: event.target.value })}
-                />
-              </div>
-
-              <div className="field">
-                <label htmlFor={`bilty_no_${index}`}>Bilty no.</label>
-                <input
-                  id={`bilty_no_${index}`}
-                  type="text"
-                  value={bill.biltyNo}
-                  onChange={(event) => updateBill(index, { biltyNo: event.target.value })}
-                />
-                {errorFor(`sauda_bills[${index}].bilty_no`) && (
-                  <p className="field__error">{errorFor(`sauda_bills[${index}].bilty_no`)}</p>
-                )}
-              </div>
-
-              <div className="field">
-                <label htmlFor={`bilty_date_${index}`}>Bilty date</label>
-                <input
-                  id={`bilty_date_${index}`}
-                  type="date"
-                  value={bill.biltyDate}
-                  onChange={(event) => updateBill(index, { biltyDate: event.target.value })}
-                />
-              </div>
-            </div>
-
-            {!allLots && (
-              <div className="field">
-                <label>Lot no.</label>
-                {availableLotNos.length === 0 ? (
-                  <p className="muted">
-                    Enter lot numbers under Marks above to assign them to a bill.
-                  </p>
-                ) : (
-                  <div className="checkbox-group">
-                    {availableLotNos.map((lotNo) => {
-                      const assignedElsewhere = bills.some(
-                        (other, otherIndex) => otherIndex !== index && other.lotNos.includes(lotNo),
-                      );
-                      return (
-                        <label key={lotNo} className="checkbox-group__item">
-                          <input
-                            type="checkbox"
-                            checked={bill.lotNos.includes(lotNo)}
-                            disabled={assignedElsewhere}
-                            onChange={(event) =>
-                              toggleBillLotNo(index, lotNo, event.target.checked)
-                            }
-                          />
-                          {lotNo}
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
-
-        {!allLots && (
-          <button type="button" className="button" onClick={addBill}>
-            + Add another bill
-          </button>
-        )}
-        {errorFor("sauda_bills") && <p className="field__error">{errorFor("sauda_bills")}</p>}
-      </fieldset>
-
-      <fieldset>
         <legend>Party details</legend>
         <div className="grid">
           <Combobox
@@ -715,87 +627,223 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
               <p className="field__error">{errorFor("transporter_name")}</p>
             )}
           </div>
+
+          <div className="field">
+            <label htmlFor="bilty_no">Bilty no.</label>
+            <input
+              id="bilty_no"
+              type="text"
+              value={values.bilty_no}
+              onChange={setField("bilty_no")}
+            />
+            {errorFor("bilty_no") && <p className="field__error">{errorFor("bilty_no")}</p>}
+          </div>
+
+          <div className="field">
+            <label htmlFor="bilty_date">Bilty date</label>
+            <input
+              id="bilty_date"
+              type="date"
+              value={values.bilty_date}
+              onChange={setField("bilty_date")}
+            />
+          </div>
         </div>
         {errorFor("seller") && <p className="field__error">{errorFor("seller")}</p>}
         {errorFor("buyer") && <p className="field__error">{errorFor("buyer")}</p>}
       </fieldset>
 
       <fieldset>
-        <legend>Amounts</legend>
-        <div className="grid">
-          <div className="field">
-            <label htmlFor="discount_percent">Discount %</label>
-            <input
-              id="discount_percent"
-              type="number"
-              min="0"
-              max="100"
-              step="0.01"
-              value={values.discount_percent}
-              onChange={setField("discount_percent")}
-            />
-            {errorFor("discount_percent") && (
-              <p className="field__error">{errorFor("discount_percent")}</p>
-            )}
-          </div>
+        <legend>Billing</legend>
+        <label className="field field--checkbox">
+          <input
+            type="checkbox"
+            checked={allLots}
+            onChange={(event) => setAllLotsMode(event.target.checked)}
+          />
+          All (one bill covers every lot)
+        </label>
 
-          <div className="field">
-            <label htmlFor="credit_due">Credit due</label>
-            <input
-              id="credit_due"
-              type="number"
-              min="0"
-              step="0.01"
-              value={values.credit_due}
-              onChange={setField("credit_due")}
-            />
-            {errorFor("credit_due") && <p className="field__error">{errorFor("credit_due")}</p>}
-          </div>
-        </div>
+        {bills.map((bill, index) => {
+          const derived = deriveBillAmounts(billAmount(lines, bill, bills.length <= 1), bill.discountPercent);
 
-        {derived ? (
-          <dl className="derived">
-            <div className="derived__row">
-              <dt>Amount</dt>
-              <dd>{formatMoney(derived.amount)}</dd>
-            </div>
-            <div className="derived__row">
-              <dt>Disc. amt.</dt>
-              <dd>{formatMoney(derived.discAmt)}</dd>
-            </div>
-            <div className="derived__row">
-              <dt>Taxable value</dt>
-              <dd>{formatMoney(derived.taxableValue)}</dd>
-            </div>
-            <div className="derived__row">
-              <dt>GST amt. (5%)</dt>
-              <dd>{formatMoney(derived.gstAmt)}</dd>
-            </div>
-            <div className="derived__row derived__row--total">
-              <dt>Total tax bill amt.</dt>
-              <dd>{formatMoney(derived.totalTaxBillAmt)}</dd>
-            </div>
-            {brokerageBasis && (
-              <div className="derived__row">
-                <dt>Brokerage (1% of {brokerageBasis.label})</dt>
-                <dd>{formatMoney(round2(brokerageBasis.of(derived) * BROKERAGE_RATE))}</dd>
+          return (
+            <div className="sauda-bill" key={index}>
+              <div className="sauda-bill__header">
+                <h3>Bill {index + 1}</h3>
+                {!allLots && bills.length > 1 && (
+                  <button
+                    type="button"
+                    className="button button--small"
+                    onClick={() => removeBill(index)}
+                  >
+                    Remove bill
+                  </button>
+                )}
               </div>
-            )}
-            <div className="derived__row">
-              <dt>Round off</dt>
-              <dd>{formatMoney(derived.roundOff)}</dd>
+
+              <div className="grid">
+                <div className="field">
+                  <label htmlFor={`bill_no_${index}`}>Tax Invoice No.</label>
+                  <input
+                    id={`bill_no_${index}`}
+                    type="text"
+                    value={bill.billNo}
+                    onChange={(event) => updateBill(index, { billNo: event.target.value })}
+                  />
+                  {errorFor(`sauda_bills[${index}].bill_no`) && (
+                    <p className="field__error">{errorFor(`sauda_bills[${index}].bill_no`)}</p>
+                  )}
+                </div>
+
+                <div className="field">
+                  <label htmlFor={`bill_date_${index}`}>Tax Invoice Date</label>
+                  <input
+                    id={`bill_date_${index}`}
+                    type="date"
+                    value={bill.billDate}
+                    onChange={(event) => updateBill(index, { billDate: event.target.value })}
+                  />
+                </div>
+
+                <div className="field">
+                  <label htmlFor={`discount_percent_${index}`}>Discount %</label>
+                  <input
+                    id={`discount_percent_${index}`}
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={bill.discountPercent}
+                    onChange={(event) => updateBill(index, { discountPercent: event.target.value })}
+                  />
+                  {errorFor(`sauda_bills[${index}].discount_percent`) && (
+                    <p className="field__error">
+                      {errorFor(`sauda_bills[${index}].discount_percent`)}
+                    </p>
+                  )}
+                </div>
+
+                {allLots && (
+                  <div className="field">
+                    <label htmlFor={`credit_due_${index}`}>Credit due</label>
+                    <input
+                      id={`credit_due_${index}`}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={values.credit_due}
+                      onChange={setField("credit_due")}
+                    />
+                    {errorFor("credit_due") && (
+                      <p className="field__error">{errorFor("credit_due")}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {!allLots && (
+                <div className="grid">
+                  <div className="field">
+                    <label htmlFor={`credit_due_${index}`}>Credit due</label>
+                    <input
+                      id={`credit_due_${index}`}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={values.credit_due}
+                      onChange={setField("credit_due")}
+                    />
+                    {errorFor("credit_due") && (
+                      <p className="field__error">{errorFor("credit_due")}</p>
+                    )}
+                  </div>
+
+                  <div className="field">
+                    <label>Lot no.</label>
+                    {availableLotNos.length === 0 ? (
+                      <p className="muted">
+                        Enter lot numbers under Marks above to assign them to a bill.
+                      </p>
+                    ) : (
+                      <div className="checkbox-group">
+                        {availableLotNos.map((lotNo) => {
+                          const assignedElsewhere = bills.some(
+                            (other, otherIndex) => otherIndex !== index && other.lotNos.includes(lotNo),
+                          );
+                          return (
+                            <label key={lotNo} className="checkbox-group__item">
+                              <input
+                                type="checkbox"
+                                checked={bill.lotNos.includes(lotNo)}
+                                disabled={assignedElsewhere}
+                                onChange={(event) =>
+                                  toggleBillLotNo(index, lotNo, event.target.checked)
+                                }
+                              />
+                              {lotNo}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {derived ? (
+                <dl className="derived">
+                  <div className="derived__row">
+                    <dt>Amount</dt>
+                    <dd>{formatMoney(derived.amount)}</dd>
+                  </div>
+                  <div className="derived__row">
+                    <dt>Disc. amt.</dt>
+                    <dd>{formatMoney(derived.discAmt)}</dd>
+                  </div>
+                  <div className="derived__row">
+                    <dt>Taxable value</dt>
+                    <dd>{formatMoney(derived.taxableValue)}</dd>
+                  </div>
+                  <div className="derived__row">
+                    <dt>GST amt. (5%)</dt>
+                    <dd>{formatMoney(derived.gstAmt)}</dd>
+                  </div>
+                  <div className="derived__row derived__row--total">
+                    <dt>Total tax bill amt.</dt>
+                    <dd>{formatMoney(derived.totalTaxBillAmt)}</dd>
+                  </div>
+                  {brokerageBasis && (
+                    <div className="derived__row">
+                      <dt>Brokerage (1% of {brokerageBasis.label})</dt>
+                      <dd>{formatMoney(round2(brokerageBasis.of(derived) * BROKERAGE_RATE))}</dd>
+                    </div>
+                  )}
+                  <div className="derived__row">
+                    <dt>Round off</dt>
+                    <dd>{formatMoney(derived.roundOff)}</dd>
+                  </div>
+                  <div className="derived__row derived__row--total">
+                    <dt>Final amount</dt>
+                    <dd>{formatMoney(derived.finalAmount)}</dd>
+                  </div>
+                </dl>
+              ) : (
+                <p className="muted">
+                  Rate the grades above and this bill's amount, discount, GST and total
+                  work themselves out.
+                </p>
+              )}
             </div>
-            <div className="derived__row derived__row--total">
-              <dt>Final amount</dt>
-              <dd>{formatMoney(derived.finalAmount)}</dd>
-            </div>
-          </dl>
-        ) : (
-          <p className="muted">
-            Rate the grades above and the amount, discount, GST and bill total work
-            themselves out.
-          </p>
+          );
+        })}
+
+        {!allLots && (
+          <button type="button" className="button" onClick={addBill}>
+            + Add another bill
+          </button>
         )}
+        {errorFor("sauda_bills") && <p className="field__error">{errorFor("sauda_bills")}</p>}
       </fieldset>
 
       <div className="form-actions">
@@ -820,8 +868,10 @@ const LABELS = {
   sauda_grades: "grades",
   sauda_bills: "Bills",
   lot_nos: "lot no.",
-  bill_no: "bill no.",
+  bill_no: "tax invoice no.",
+  bill_date: "tax invoice date",
   bilty_no: "bilty no.",
+  bilty_date: "bilty date",
   sauda_no: "sauda no.",
   sauda_date: "sauda date",
   discount_percent: "discount %",

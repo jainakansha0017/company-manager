@@ -46,23 +46,20 @@ RSpec.describe Sauda do
     expect(sauda.errors[:sauda_marks]).to include("must include at least one mark")
   end
 
-  it "rejects a discount of more than the whole amount" do
-    sauda = build(:sauda, discount_percent: 101)
-
-    expect(sauda).not_to be_valid
-    expect(sauda.errors[:discount_percent]).to be_present
-  end
-
   describe "the bill" do
     # A sauda worth exactly `amount`: one grade of a single one-kilo bag priced
     # at the amount itself, so what is under test is the bill's arithmetic and
-    # not the kilos'.
-    def sauda_worth(amount, **attributes)
+    # not the kilos'. The discount now lives on the bill, not the sauda, so it
+    # is passed separately and built onto the one bill the sauda has.
+    def sauda_worth(amount, discount_percent: nil, **attributes)
       sauda = build(:sauda, mark_count: 0, **attributes)
       mark = build(:sauda_mark, sauda: sauda, grade_count: 0,
                                 mark: build(:mark, seller: sauda.seller))
       mark.sauda_grades << build(:sauda_grade, sauda_mark: mark, bags: 1, weight: 1, rate: amount)
       sauda.sauda_marks << mark
+      # Replaces the default bill the factory builds, so this one bill carries
+      # the discount under test rather than there being two "All" bills.
+      sauda.sauda_bills = [build(:sauda_bill, sauda: sauda, discount_percent: discount_percent)]
       sauda.tap(&:save!)
     end
 

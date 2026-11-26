@@ -8,9 +8,10 @@ RSpec.describe SaudaRegisterExport do
   # A sauda worth 100,000 on the goods: 2,500 off, 97,500 taxable, 4,875 GST.
   def sauda_worth_100k(marks: 1, **attributes)
     sauda = build(:sauda, company: company, seller: seller, buyer: buyer, mark_count: 0,
-                          discount_percent: 2.5, destination: "Siliguri",
+                          destination: "Siliguri",
                           sauda_bills: [build(:sauda_bill, bill_no: "TI-2026-118",
-                                                            bill_date: Date.new(2026, 9, 23))],
+                                                            bill_date: Date.new(2026, 9, 23),
+                                                            discount_percent: 2.5)],
                           **attributes)
     marks.times do
       mark = build(:sauda_mark, sauda: sauda, grade_count: 0,
@@ -57,7 +58,7 @@ RSpec.describe SaudaRegisterExport do
       rows = sheet_rows(export(sauda_worth_100k).to_xlsx)
 
       expect(rows[3]).to eq(
-        ["Tax invoice no.", "Bill date", "Destination", "Buyer", "Mark", "Kg",
+        ["Tax invoice no.", "Tax invoice date", "Destination", "Buyer", "Mark", "Kg",
          "Total tax bill amt", "GST", "Discount", "Amount", "Brokerage"]
       )
     end

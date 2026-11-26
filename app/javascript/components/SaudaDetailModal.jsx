@@ -38,7 +38,8 @@ export default function SaudaDetailModal({ sauda, onClose, onEdit }) {
     { label: "Date", value: date(sauda.sauda_date) },
     { label: "Destination", value: sauda.destination },
     { label: "Transporter", value: sauda.transporter_name },
-    { label: "Discount %", value: sauda.discount_percent },
+    { label: "Bilty no.", value: sauda.bilty_no },
+    { label: "Bilty date", value: date(sauda.bilty_date) },
     { label: "Credit due", value: money(sauda.credit_due) },
   ]);
 
@@ -46,15 +47,27 @@ export default function SaudaDetailModal({ sauda, onClose, onEdit }) {
   // the sauda's own details above.
   const billLine = (bill) =>
     filled([
-      { label: "Bill no.", value: bill.bill_no },
-      { label: "Bill date", value: date(bill.bill_date) },
-      { label: "Bilty no.", value: bill.bilty_no },
-      { label: "Bilty date", value: date(bill.bilty_date) },
+      { label: "Tax Invoice No.", value: bill.bill_no },
+      { label: "Tax Invoice Date", value: date(bill.bill_date) },
+      { label: "Discount %", value: bill.discount_percent },
     ])
       .map((row) => `${row.label} ${row.value}`)
       .join(", ");
 
-  const bill = filled([
+  // This bill's own amount breakdown — its proportional share of the sauda,
+  // discounted and taxed at this bill's own rate.
+  const billAmounts = (bill) =>
+    filled([
+      { label: "Total kg", value: bill.total_kg == null ? null : formatKg(Number(bill.total_kg)) },
+      { label: "Amount", value: money(bill.amount) },
+      { label: "Discount amt", value: money(bill.disc_amt) },
+      { label: "Taxable value", value: money(bill.taxable_value) },
+      { label: "GST amt", value: money(bill.gst_amt) },
+      { label: "Total tax bill amt", value: money(bill.total_tax_bill_amt) },
+      { label: "Brokerage amt", value: money(bill.brokerage_amt) },
+    ]);
+
+  const totals = filled([
     { label: "Total kg", value: sauda.total_kg == null ? null : formatKg(Number(sauda.total_kg)) },
     { label: "Amount", value: money(sauda.amount) },
     { label: "Discount amt", value: money(sauda.disc_amt) },
@@ -112,16 +125,26 @@ export default function SaudaDetailModal({ sauda, onClose, onEdit }) {
                   {saudaBill.lot_nos ? `Lot ${saudaBill.lot_nos}` : "All lots"}
                 </p>
                 <p>{billLine(saudaBill) || "—"}</p>
+                {billAmounts(saudaBill).length > 0 && (
+                  <dl className="modal__fields">
+                    {billAmounts(saudaBill).map((row) => (
+                      <React.Fragment key={row.label}>
+                        <dt>{row.label}</dt>
+                        <dd>{row.value}</dd>
+                      </React.Fragment>
+                    ))}
+                  </dl>
+                )}
               </div>
             ))}
           </>
         )}
 
-        {bill.length > 0 && (
+        {totals.length > 0 && (
           <>
-            <h4 className="modal__subtitle">Bill</h4>
+            <h4 className="modal__subtitle">Totals</h4>
             <dl className="modal__fields">
-              {bill.map((row) => (
+              {totals.map((row) => (
                 <React.Fragment key={row.label}>
                   <dt>{row.label}</dt>
                   <dd>{row.value}</dd>

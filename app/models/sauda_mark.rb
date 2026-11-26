@@ -34,11 +34,20 @@ class SaudaMark < ApplicationRecord
     priced.sum if priced.any?
   end
 
-  private
+  # The grade entered in the same position as a given lot no. — the first
+  # grade typed prices the first lot, the second grade the second lot, and so
+  # on. Nil if the lot isn't one of this mark's own, or it has no grade lined
+  # up with it.
+  def grade_for_lot(lot_no)
+    index = lot_no_list.index(lot_no)
+    index && live_grades[index]
+  end
 
   def live_grades
     sauda_grades.reject(&:marked_for_destruction?)
   end
+
+  private
 
   # Re-joined so "A ;;B; " and "A; B" are stored identically.
   def normalise_lot_nos

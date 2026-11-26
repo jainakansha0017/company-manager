@@ -19,13 +19,12 @@ class Sauda < ApplicationRecord
 
   before_validation :set_total_kg
   before_validation :set_amounts
+  before_validation :recalculate_bills
+  after_validation :set_bill_totals
 
   validates :sauda_date, presence: true
-  validates :destination, :sauda_no, :transporter_name, length: { maximum: 255 }
+  validates :destination, :sauda_no, :transporter_name, :bilty_no, length: { maximum: 255 }
   validates :amount, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
-  validates :discount_percent,
-            numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 100 },
-            allow_nil: true
   validates :credit_due, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   # A sauda no. names one deal, and the same number turning up twice anywhere
   # in the application almost always means two entries for the one sauda.
@@ -56,6 +55,20 @@ class Sauda < ApplicationRecord
     "#{start}-#{start + 1}"
   end
 
+  # Which of this sauda's grades a bill is responsible for: every live grade
+  # of every live mark, when it has been given no lot nos of its own and it is
+  # the only bill there is ("All", covering every lot by definition, since
+  # nothing else exists to bill the rest); otherwise, from each live mark,
+  # only the grade entered in the same position as a lot no. the bill was
+  # given — the first grade typed prices the first lot, the second grade the
+  # second lot, and so on — none at all, until it's given any lot nos, rather
+  # than every lot by default.
+  def grades_for_bill(bill)
+    return live_marks.flat_map(&:live_grades) if bill.lot_no_list.empty? && live_bills.size <= 1
+
+    live_marks.flat_map { |mark| bill.lot_no_list.filter_map { |lot_no| mark.grade_for_lot(lot_no) } }
+  end
+
   private
 
   def live_marks
@@ -66,37 +79,27 @@ class Sauda < ApplicationRecord
     self.total_kg = live_marks.sum(&:total_kg)
   end
 
-  # The bill is a chain, and only the discount percentage is typed in. The amount
-  # is the grades priced at their rates, the discount comes off that, and GST goes
-  # on what is left. Every step is stored but none is entered, so a stored bill
-  # can always be traced back to the kilos and rates it came from. Rounded at each
-  # step rather than only at the end, so the columns add up as they read on screen.
+  # Just the grades priced at their rates, added up across every mark. What
+  # becomes of it — discount, GST, the bill total — is each live bill's own
+  # concern now, since a split sauda can carry more than one.
   def set_amounts
     self.amount = live_marks.filter_map(&:amount).then { |priced| priced.sum if priced.any? }
-
-    # Clearing the rates clears the bill with them, rather than leaving the
-    # figures from the last time it was priced.
-    if amount.blank?
-      self.disc_amt = self.taxable_value = self.gst_amt = self.total_tax_bill_amt = nil
-      self.brokerage_amt = nil
-      return
-    end
-
-    self.disc_amt = (amount * discount_percent.to_d / 100).round(2)
-    self.taxable_value = (amount - disc_amt).round(2)
-    self.gst_amt = (taxable_value * GST_RATE).round(2)
-    self.total_tax_bill_amt = (taxable_value + gst_amt).round(2)
-    self.brokerage_amt = set_brokerage_amt
   end
 
-  # The broker takes one per cent, but of which figure is the seller's own
-  # arrangement: some are dealt with on the goods, some on what is taxed after
-  # the discount. A seller with no arrangement recorded has no brokerage.
-  def set_brokerage_amt
-    case seller&.brokerage_basis
-    when "amount" then (amount * BROKERAGE_RATE).round(2)
-    when "taxable_value" then (taxable_value * BROKERAGE_RATE).round(2)
-    end
+  # The sauda's own totals are just what its live bills add up to, so any
+  # figure here can always be traced to one bill or another rather than to a
+  # single discount no bill actually carries any more.
+  def set_bill_totals
+    self.disc_amt = sum_of_bills(:disc_amt)
+    self.taxable_value = sum_of_bills(:taxable_value)
+    self.gst_amt = sum_of_bills(:gst_amt)
+    self.total_tax_bill_amt = sum_of_bills(:total_tax_bill_amt)
+    self.brokerage_amt = sum_of_bills(:brokerage_amt)
+  end
+
+  def sum_of_bills(attribute)
+    values = live_bills.filter_map(&attribute)
+    values.sum.round(2) if values.any?
   end
 
   def must_have_a_mark
@@ -107,6 +110,14 @@ class Sauda < ApplicationRecord
 
   def live_bills
     sauda_bills.reject(&:marked_for_destruction?)
+  end
+
+  # Keeps every live bill's own figures in step with this sauda's amount and
+  # kilos, even when only a mark changed and the bill itself was never
+  # directly touched — Rails' own autosave validation skips an association
+  # member it does not consider "changed", so this cannot be left to that.
+  def recalculate_bills
+    live_bills.each(&:recalculate_amounts)
   end
 
   # Once a sauda is split into more than one bill, which lot it is billed

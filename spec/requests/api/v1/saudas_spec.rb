@@ -45,8 +45,8 @@ RSpec.describe "Api::V1 saudas" do
 
       expect(json.first.keys).to match_array(
         %w[id company_id seller_id buyer_id buyer_name seller_name sauda_no sauda_date
-           destination transporter_name
-           amount discount_percent credit_due total_tax_bill_amt gst_amt disc_amt taxable_value
+           destination transporter_name bilty_no bilty_date
+           amount credit_due total_tax_bill_amt gst_amt disc_amt taxable_value
            brokerage_amt total_kg created_at financial_year sauda_marks sauda_bills]
       )
     end
@@ -152,7 +152,8 @@ RSpec.describe "Api::V1 saudas" do
           sauda_date: "2026-09-21",
           destination: "Siliguri",
           transporter_name: "Sri Ganesh Roadways",
-          discount_percent: "2.5",
+          bilty_no: "BL-9921",
+          bilty_date: "2026-09-24",
           credit_due: "500.00",
           sauda_marks_attributes: [
             {
@@ -169,8 +170,7 @@ RSpec.describe "Api::V1 saudas" do
             {
               bill_no: "TI-2026-118",
               bill_date: "2026-09-23",
-              bilty_no: "BL-9921",
-              bilty_date: "2026-09-24"
+              discount_percent: "2.5"
             }
           ]
         }
@@ -202,8 +202,8 @@ RSpec.describe "Api::V1 saudas" do
       post "/api/v1/saudas", params: valid_params
 
       expect(json["transporter_name"]).to eq("Sri Ganesh Roadways")
-      expect(json["sauda_bills"].first["bilty_no"]).to eq("BL-9921")
-      expect(json["sauda_bills"].first["bilty_date"]).to eq("2026-09-24")
+      expect(json["bilty_no"]).to eq("BL-9921")
+      expect(json["bilty_date"]).to eq("2026-09-24")
     end
 
     it "counts the bags on each mark" do
@@ -353,14 +353,14 @@ RSpec.describe "Api::V1 saudas" do
     it "re-works the bill from the marks it was given" do
       patch "/api/v1/saudas/#{sauda.id}", params: {
         sauda: {
-          discount_percent: "10.0",
           sauda_marks_attributes: [
             {
               mark_id: mark.id,
               # 100 kg @ 100 = 10,000.
               sauda_grades_attributes: [{ grade: "PD", bags: 4, weight: "25.0", rate: "100.00" }]
             }
-          ]
+          ],
+          sauda_bills_attributes: [{ discount_percent: "10.0" }]
         }
       }
 

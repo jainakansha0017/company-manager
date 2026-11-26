@@ -14,7 +14,7 @@ class SaudaRegisterExport
   # file: the sauda date, the lot numbers, the grades and the bags.
   COLUMNS = [
     Column.new("Tax invoice no.", :sauda, :text, ->(sauda, _) { bill_numbers(sauda) }),
-    Column.new("Bill date", :sauda, :text, ->(sauda, _) { bill_dates(sauda) }),
+    Column.new("Tax invoice date", :sauda, :text, ->(sauda, _) { bill_dates(sauda) }),
     Column.new("Destination", :sauda, :text, ->(sauda, _) { sauda.destination }),
     Column.new("Buyer", :sauda, :text, ->(sauda, _) { sauda.buyer&.name }),
     Column.new("Mark", :mark, :text, ->(_, mark) { mark&.mark&.name }),

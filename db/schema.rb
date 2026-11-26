@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_26_090000) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_26_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -77,11 +77,17 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_26_090000) do
     t.bigint "sauda_id", null: false
     t.string "bill_no"
     t.date "bill_date"
-    t.string "bilty_no"
-    t.date "bilty_date"
     t.string "lot_nos"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.decimal "discount_percent", precision: 5, scale: 2
+    t.decimal "total_kg", precision: 12, scale: 3
+    t.decimal "amount", precision: 12, scale: 2
+    t.decimal "disc_amt", precision: 12, scale: 2
+    t.decimal "taxable_value", precision: 12, scale: 2
+    t.decimal "gst_amt", precision: 12, scale: 2
+    t.decimal "total_tax_bill_amt", precision: 12, scale: 2
+    t.decimal "brokerage_amt", precision: 12, scale: 2
     t.index ["sauda_id"], name: "index_sauda_bills_on_sauda_id"
   end
 
@@ -121,10 +127,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_26_090000) do
     t.bigint "buyer_id"
     t.string "sauda_no"
     t.decimal "amount", precision: 12, scale: 2
-    t.decimal "discount_percent", precision: 5, scale: 2
     t.string "transporter_name"
     t.decimal "brokerage_amt", precision: 12, scale: 2
     t.decimal "credit_due", precision: 12, scale: 2
+    t.string "bilty_no"
+    t.date "bilty_date"
     t.index "lower((sauda_no)::text)", name: "index_saudas_on_lower_sauda_no_uniq", unique: true, where: "((sauda_no)::text <> ''::text)"
     t.index ["buyer_id"], name: "index_saudas_on_buyer_id"
     t.index ["company_id", "sauda_date"], name: "index_saudas_on_company_id_and_sauda_date"
