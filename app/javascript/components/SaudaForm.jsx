@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   checkSaudaNoAvailable, createMark, createSauda, getLastEntryDate, getSauda, listMarks,
   listParties, updateSauda,
 } from "../lib/api";
 import Combobox from "./Combobox";
-import SaudaMarkFields, { formatKg, formatMoney, gradeAmount, kilos } from "./SaudaMarkFields";
+import SaudaMarkFields, { formatKg, formatMoney, gradeAmount, kilos, splitList } from "./SaudaMarkFields";
 
 const today = () => {
   const now = new Date();
@@ -13,15 +13,16 @@ const today = () => {
 
 const blankLine = () => ({ markId: null, lotNos: "", gradeText: "", grades: [] });
 
+// `lotNos` is an array of lot nos picked from those entered under Marks, only
+// meaningful once "All" is unchecked — while it is checked this one bill
+// stands for every lot, same as a sauda that has never been split.
+const blankBill = () => ({ billNo: "", billDate: "", biltyNo: "", biltyDate: "", lotNos: [] });
+
 const blankValues = () => ({
   sauda_no: "",
   sauda_date: today(),
-  bill_date: "",
-  tax_invoice_no: "",
   destination: "",
   transporter_name: "",
-  bilty_no: "",
-  bilty_date: "",
   buyer_id: null,
   discount_percent: "",
   credit_due: "",
@@ -32,16 +33,26 @@ const blankValues = () => ({
 const valuesFrom = (sauda) => ({
   sauda_no: sauda.sauda_no ?? "",
   sauda_date: sauda.sauda_date ?? "",
-  bill_date: sauda.bill_date ?? "",
-  tax_invoice_no: sauda.tax_invoice_no ?? "",
   destination: sauda.destination ?? "",
   transporter_name: sauda.transporter_name ?? "",
-  bilty_no: sauda.bilty_no ?? "",
-  bilty_date: sauda.bilty_date ?? "",
   buyer_id: sauda.buyer_id,
   discount_percent: sauda.discount_percent ?? "",
   credit_due: sauda.credit_due ?? "",
 });
+
+// Mirrors linesFrom, for the bills side of a loaded sauda.
+const billsFrom = (sauda) =>
+  sauda.sauda_bills.map((bill) => ({
+    billNo: bill.bill_no ?? "",
+    billDate: bill.bill_date ?? "",
+    biltyNo: bill.bilty_no ?? "",
+    biltyDate: bill.bilty_date ?? "",
+    lotNos: splitList(bill.lot_nos ?? ""),
+  }));
+
+// "All" is what one bill with no lot nos of its own means — the state a sauda
+// starts in and the only one a single bill can be in.
+const isAllLots = (bills) => bills.length <= 1 && bills.every((bill) => bill.lotNos.length === 0);
 
 // The grade text is rebuilt from the grades themselves, so editing it splits
 // and re-splits exactly as it does on a sauda being entered for the first time.
@@ -144,6 +155,8 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
     ...(buyerId ? { buyer_id: Number(buyerId) } : {}),
   }));
   const [lines, setLines] = useState(() => draft?.lines ?? [blankLine()]);
+  const [bills, setBills] = useState(() => draft?.bills ?? [blankBill()]);
+  const [allLots, setAllLots] = useState(() => draft?.allLots ?? true);
   // A seller just created on the seller page wins over anything parked; short
   // of that, a parked draft is newer than the URL. Neither applies to a plain
   // "Add New Sauda" click, which is exactly the point — it starts unselected.
@@ -183,6 +196,9 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
         if (!current) return;
         setValues(valuesFrom(sauda));
         setLines(sauda.sauda_marks.length ? linesFrom(sauda) : [blankLine()]);
+        const loadedBills = sauda.sauda_bills.length ? billsFrom(sauda) : [blankBill()];
+        setBills(loadedBills);
+        setAllLots(isAllLots(loadedBills));
         // Only a fallback: the URL normally already carries this seller's id.
         setSelectedSellerId((existing) => existing ?? sauda.seller_id);
       })
@@ -310,6 +326,36 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
   const removeLine = (index) =>
     setLines((current) => current.filter((_, i) => i !== index));
 
+  // Every lot no. entered under Marks, in the order typed there, is what a
+  // bill can be assigned — the same free text, just read back out.
+  const availableLotNos = useMemo(
+    () => [...new Set(lines.flatMap((line) => splitList(line.lotNos)))],
+    [lines],
+  );
+
+  const updateBill = (index, patch) =>
+    setBills((current) => current.map((bill, i) => (i === index ? { ...bill, ...patch } : bill)));
+
+  const addBill = () => setBills((current) => [...current, blankBill()]);
+
+  const removeBill = (index) =>
+    setBills((current) => current.filter((_, i) => i !== index));
+
+  const toggleBillLotNo = (index, lotNo, checked) =>
+    updateBill(index, {
+      lotNos: checked
+        ? [...bills[index].lotNos, lotNo]
+        : bills[index].lotNos.filter((entry) => entry !== lotNo),
+    });
+
+  // Unchecking "All" just opens up the lot-no picker on the one bill there
+  // already is; checking it back collapses to that same one bill, with
+  // whatever lots it had picked let go since it now stands for all of them.
+  const setAllLotsMode = (checked) => {
+    setAllLots(checked);
+    if (checked) setBills((current) => [{ ...current[0], lotNos: [] }]);
+  };
+
   // Marks are just a name, so "add new" saves one and selects it without
   // leaving the form.
   const handleCreateMark = async (index, name) => {
@@ -332,7 +378,7 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
     try {
       sessionStorage.setItem(
         draftKey(saudaId),
-        JSON.stringify({ values, lines, sellerId: selectedSellerId }),
+        JSON.stringify({ values, lines, bills, allLots, sellerId: selectedSellerId }),
       );
     } catch {
       /* a full or disabled sessionStorage just means the draft is not kept */
@@ -379,6 +425,13 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
           weight: grade.weight,
           rate: grade.rate,
         })),
+      })),
+      sauda_bills_attributes: bills.map((bill) => ({
+        bill_no: bill.billNo,
+        bill_date: bill.billDate,
+        bilty_no: bill.biltyNo,
+        bilty_date: bill.biltyDate,
+        lot_nos: allLots ? "" : bill.lotNos.join("; "),
       })),
     };
 
@@ -500,6 +553,122 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
       </fieldset>
 
       <fieldset>
+        <legend>Billing</legend>
+        <label className="field field--checkbox">
+          <input
+            type="checkbox"
+            checked={allLots}
+            onChange={(event) => setAllLotsMode(event.target.checked)}
+          />
+          All (one bill covers every lot)
+        </label>
+
+        {bills.map((bill, index) => (
+          <div className="sauda-bill" key={index}>
+            <div className="sauda-bill__header">
+              <h3>Bill {index + 1}</h3>
+              {!allLots && bills.length > 1 && (
+                <button
+                  type="button"
+                  className="button button--small"
+                  onClick={() => removeBill(index)}
+                >
+                  Remove bill
+                </button>
+              )}
+            </div>
+
+            <div className="grid">
+              <div className="field">
+                <label htmlFor={`bill_no_${index}`}>Bill no.</label>
+                <input
+                  id={`bill_no_${index}`}
+                  type="text"
+                  value={bill.billNo}
+                  onChange={(event) => updateBill(index, { billNo: event.target.value })}
+                />
+                {errorFor(`sauda_bills[${index}].bill_no`) && (
+                  <p className="field__error">{errorFor(`sauda_bills[${index}].bill_no`)}</p>
+                )}
+              </div>
+
+              <div className="field">
+                <label htmlFor={`bill_date_${index}`}>Bill date</label>
+                <input
+                  id={`bill_date_${index}`}
+                  type="date"
+                  value={bill.billDate}
+                  onChange={(event) => updateBill(index, { billDate: event.target.value })}
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor={`bilty_no_${index}`}>Bilty no.</label>
+                <input
+                  id={`bilty_no_${index}`}
+                  type="text"
+                  value={bill.biltyNo}
+                  onChange={(event) => updateBill(index, { biltyNo: event.target.value })}
+                />
+                {errorFor(`sauda_bills[${index}].bilty_no`) && (
+                  <p className="field__error">{errorFor(`sauda_bills[${index}].bilty_no`)}</p>
+                )}
+              </div>
+
+              <div className="field">
+                <label htmlFor={`bilty_date_${index}`}>Bilty date</label>
+                <input
+                  id={`bilty_date_${index}`}
+                  type="date"
+                  value={bill.biltyDate}
+                  onChange={(event) => updateBill(index, { biltyDate: event.target.value })}
+                />
+              </div>
+            </div>
+
+            {!allLots && (
+              <div className="field">
+                <label>Lot no.</label>
+                {availableLotNos.length === 0 ? (
+                  <p className="muted">
+                    Enter lot numbers under Marks above to assign them to a bill.
+                  </p>
+                ) : (
+                  <div className="checkbox-group">
+                    {availableLotNos.map((lotNo) => {
+                      const assignedElsewhere = bills.some(
+                        (other, otherIndex) => otherIndex !== index && other.lotNos.includes(lotNo),
+                      );
+                      return (
+                        <label key={lotNo} className="checkbox-group__item">
+                          <input
+                            type="checkbox"
+                            checked={bill.lotNos.includes(lotNo)}
+                            disabled={assignedElsewhere}
+                            onChange={(event) =>
+                              toggleBillLotNo(index, lotNo, event.target.checked)
+                            }
+                          />
+                          {lotNo}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+
+        {!allLots && (
+          <button type="button" className="button" onClick={addBill}>
+            + Add another bill
+          </button>
+        )}
+        {errorFor("sauda_bills") && <p className="field__error">{errorFor("sauda_bills")}</p>}
+      </fieldset>
+
+      <fieldset>
         <legend>Party details</legend>
         <div className="grid">
           <Combobox
@@ -512,27 +681,6 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
             placeholder="Type a seller name…"
             emptyMessage="No sellers on record yet."
           />
-
-          <div className="field">
-            <label htmlFor="bill_date">Bill date</label>
-            <input
-              id="bill_date"
-              type="date"
-              value={values.bill_date}
-              onChange={setField("bill_date")}
-            />
-            {errorFor("bill_date") && <p className="field__error">{errorFor("bill_date")}</p>}
-          </div>
-
-          <div className="field">
-            <label htmlFor="tax_invoice_no">Tax invoice no.</label>
-            <input
-              id="tax_invoice_no"
-              type="text"
-              value={values.tax_invoice_no}
-              onChange={setField("tax_invoice_no")}
-            />
-          </div>
 
           <Combobox
             label="Buyer"
@@ -567,30 +715,6 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
               <p className="field__error">{errorFor("transporter_name")}</p>
             )}
           </div>
-
-          <div className="field">
-            <label htmlFor="bilty_no">Bilty no.</label>
-            <input
-              id="bilty_no"
-              type="text"
-              value={values.bilty_no}
-              onChange={setField("bilty_no")}
-            />
-            {errorFor("bilty_no") && <p className="field__error">{errorFor("bilty_no")}</p>}
-          </div>
-
-          <div className="field">
-            <label htmlFor="bilty_date">Bilty date</label>
-            <input
-              id="bilty_date"
-              type="date"
-              value={values.bilty_date}
-              onChange={setField("bilty_date")}
-            />
-            {errorFor("bilty_date") && <p className="field__error">{errorFor("bilty_date")}</p>}
-          </div>
-
-
         </div>
         {errorFor("seller") && <p className="field__error">{errorFor("seller")}</p>}
         {errorFor("buyer") && <p className="field__error">{errorFor("buyer")}</p>}
@@ -694,11 +818,12 @@ export default function SaudaForm({ sellerId, saudaId, buyerId, onNavigate }) {
 const LABELS = {
   sauda_marks: "Marks",
   sauda_grades: "grades",
+  sauda_bills: "Bills",
   lot_nos: "lot no.",
-  tax_invoice_no: "tax invoice no.",
+  bill_no: "bill no.",
+  bilty_no: "bilty no.",
   sauda_no: "sauda no.",
   sauda_date: "sauda date",
-  bill_date: "bill date",
   discount_percent: "discount %",
   credit_due: "credit due",
 };
@@ -709,7 +834,8 @@ const label = (attribute) => LABELS[attribute] ?? attribute.replace(/_/g, " ");
 function humanize(key) {
   const readable = key
     .replace(/sauda_marks\[(\d+)\]\./g, (_, index) => `Mark ${Number(index) + 1} `)
-    .replace(/sauda_grades\[(\d+)\]\./g, (_, index) => `grade ${Number(index) + 1} `);
+    .replace(/sauda_grades\[(\d+)\]\./g, (_, index) => `grade ${Number(index) + 1} `)
+    .replace(/sauda_bills\[(\d+)\]\./g, (_, index) => `Bill ${Number(index) + 1} `);
 
   if (readable !== key) return readable.replace(/([\w.]+)$/, (attribute) => label(attribute));
 

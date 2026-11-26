@@ -11,6 +11,9 @@ class Sauda < ApplicationRecord
   has_many :sauda_marks, dependent: :destroy
   accepts_nested_attributes_for :sauda_marks, allow_destroy: true
 
+  has_many :sauda_bills, dependent: :destroy
+  accepts_nested_attributes_for :sauda_bills, allow_destroy: true
+
   GST_RATE = BigDecimal("0.05")
   BROKERAGE_RATE = BigDecimal("0.01")
 
@@ -18,8 +21,7 @@ class Sauda < ApplicationRecord
   before_validation :set_amounts
 
   validates :sauda_date, presence: true
-  validates :tax_invoice_no, :destination, :sauda_no, :transporter_name, :bilty_no,
-            length: { maximum: 255 }
+  validates :destination, :sauda_no, :transporter_name, length: { maximum: 255 }
   validates :amount, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validates :discount_percent,
             numericality: { greater_than_or_equal_to: 0, less_than_or_equal_to: 100 },
@@ -29,6 +31,7 @@ class Sauda < ApplicationRecord
   # in the application almost always means two entries for the one sauda.
   validates :sauda_no, uniqueness: { case_sensitive: false }, allow_blank: true
   validate :must_have_a_mark
+  validate :bills_must_not_share_a_lot_no
 
   # Latest sauda date first; within the same date, sauda no. descending too.
   scope :ordered, -> { order(sauda_date: :desc, sauda_no: :desc) }
@@ -100,5 +103,30 @@ class Sauda < ApplicationRecord
     return if live_marks.any?
 
     errors.add(:sauda_marks, "must include at least one mark")
+  end
+
+  def live_bills
+    sauda_bills.reject(&:marked_for_destruction?)
+  end
+
+  # Once a sauda is split into more than one bill, which lot it is billed
+  # under stops being implicit, so each bill must say which lots it covers,
+  # and no lot can be claimed by more than one bill.
+  def bills_must_not_share_a_lot_no
+    return if live_bills.size <= 1
+
+    seen = Hash.new(0)
+    live_bills.each do |bill|
+      if bill.lot_no_list.empty?
+        errors.add(:sauda_bills, "must each say which lot nos they cover")
+        next
+      end
+
+      bill.lot_no_list.each { |lot_no| seen[lot_no] += 1 }
+    end
+
+    return unless seen.any? { |_, count| count > 1 }
+
+    errors.add(:sauda_bills, "cannot cover the same lot no. on more than one bill")
   end
 end

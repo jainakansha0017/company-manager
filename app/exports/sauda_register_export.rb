@@ -13,8 +13,8 @@ class SaudaRegisterExport
   # The screen's columns less the four that were asked to be left out of the
   # file: the sauda date, the lot numbers, the grades and the bags.
   COLUMNS = [
-    Column.new("Tax invoice no.", :sauda, :text, ->(sauda, _) { sauda.tax_invoice_no }),
-    Column.new("Bill date", :sauda, :text, ->(sauda, _) { sauda.bill_date&.strftime("%d %b %Y") }),
+    Column.new("Tax invoice no.", :sauda, :text, ->(sauda, _) { bill_numbers(sauda) }),
+    Column.new("Bill date", :sauda, :text, ->(sauda, _) { bill_dates(sauda) }),
     Column.new("Destination", :sauda, :text, ->(sauda, _) { sauda.destination }),
     Column.new("Buyer", :sauda, :text, ->(sauda, _) { sauda.buyer&.name }),
     Column.new("Mark", :mark, :text, ->(_, mark) { mark&.mark&.name }),
@@ -157,6 +157,17 @@ class SaudaRegisterExport
   end
 
   class << self
+    # A sauda split into more than one bill shows every bill no. (or date),
+    # joined the same way lot numbers are, rather than only the first.
+    def bill_numbers(sauda)
+      sauda.sauda_bills.filter_map(&:bill_no).join(SaudaBill::LOT_SEPARATOR).presence
+    end
+
+    def bill_dates(sauda)
+      sauda.sauda_bills.filter_map { |bill| bill.bill_date&.strftime("%d %b %Y") }
+           .join(SaudaBill::LOT_SEPARATOR).presence
+    end
+
     # 713838.2 -> "7,13,838.20": the last three digits, then twos, the way an
     # Indian bill groups them.
     def rupees(value)

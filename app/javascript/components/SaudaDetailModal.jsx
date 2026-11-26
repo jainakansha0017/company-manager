@@ -36,15 +36,23 @@ export default function SaudaDetailModal({ sauda, onClose, onEdit }) {
     { label: "Buyer", value: sauda.buyer_name },
     { label: "Sauda no.", value: sauda.sauda_no },
     { label: "Date", value: date(sauda.sauda_date) },
-    { label: "Tax invoice no.", value: sauda.tax_invoice_no },
-    { label: "Bill date", value: date(sauda.bill_date) },
     { label: "Destination", value: sauda.destination },
     { label: "Transporter", value: sauda.transporter_name },
-    { label: "Bilty no.", value: sauda.bilty_no },
-    { label: "Bilty date", value: date(sauda.bilty_date) },
     { label: "Discount %", value: sauda.discount_percent },
     { label: "Credit due", value: money(sauda.credit_due) },
   ]);
+
+  // One bill's own fields, as a single line — blank ones left out, same as
+  // the sauda's own details above.
+  const billLine = (bill) =>
+    filled([
+      { label: "Bill no.", value: bill.bill_no },
+      { label: "Bill date", value: date(bill.bill_date) },
+      { label: "Bilty no.", value: bill.bilty_no },
+      { label: "Bilty date", value: date(bill.bilty_date) },
+    ])
+      .map((row) => `${row.label} ${row.value}`)
+      .join(", ");
 
   const bill = filled([
     { label: "Total kg", value: sauda.total_kg == null ? null : formatKg(Number(sauda.total_kg)) },
@@ -90,6 +98,20 @@ export default function SaudaDetailModal({ sauda, onClose, onEdit }) {
                     <li key={grade.id}>{gradeLine(grade)}</li>
                   ))}
                 </ul>
+              </div>
+            ))}
+          </>
+        )}
+
+        {sauda.sauda_bills.length > 0 && (
+          <>
+            <h4 className="modal__subtitle">Billing</h4>
+            {sauda.sauda_bills.map((saudaBill) => (
+              <div key={saudaBill.id} className="modal__mark">
+                <p className="modal__mark-name">
+                  {saudaBill.lot_nos ? `Lot ${saudaBill.lot_nos}` : "All lots"}
+                </p>
+                <p>{billLine(saudaBill) || "—"}</p>
               </div>
             ))}
           </>

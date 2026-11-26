@@ -8,8 +8,9 @@ RSpec.describe SaudaRegisterExport do
   # A sauda worth 100,000 on the goods: 2,500 off, 97,500 taxable, 4,875 GST.
   def sauda_worth_100k(marks: 1, **attributes)
     sauda = build(:sauda, company: company, seller: seller, buyer: buyer, mark_count: 0,
-                          discount_percent: 2.5, tax_invoice_no: "TI-2026-118",
-                          bill_date: Date.new(2026, 9, 23), destination: "Siliguri",
+                          discount_percent: 2.5, destination: "Siliguri",
+                          sauda_bills: [build(:sauda_bill, bill_no: "TI-2026-118",
+                                                            bill_date: Date.new(2026, 9, 23))],
                           **attributes)
     marks.times do
       mark = build(:sauda_mark, sauda: sauda, grade_count: 0,

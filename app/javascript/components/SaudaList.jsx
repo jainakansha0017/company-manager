@@ -24,6 +24,13 @@ const money = (value) =>
 
 const gradeList = (mark) => mark.sauda_grades.map((entry) => entry.grade).join(", ") || "—";
 
+// A sauda split into more than one bill shows every bill no. (or date)
+// joined together, rather than only the first.
+const billNos = (sauda) => sauda.sauda_bills.map((bill) => bill.bill_no).filter(Boolean).join(", ") || "—";
+const billDates = (sauda) =>
+  sauda.sauda_bills.map((bill) => (bill.bill_date ? formatDate(bill.bill_date) : null))
+    .filter(Boolean).join(", ") || "—";
+
 // What the seller's register comes to. A sauda that carries no figure yet
 // contributes nothing rather than breaking the sum.
 const totalOf = (saudas, field) =>
@@ -152,8 +159,8 @@ export default function SaudaList({
                     <>
                       {showSaudaNo && <td rowSpan={span}>{sauda.sauda_no || "—"}</td>}
                       <td rowSpan={span}>{formatDate(sauda.sauda_date)}</td>
-                      <td rowSpan={span}>{sauda.tax_invoice_no || "—"}</td>
-                      <td rowSpan={span}>{sauda.bill_date ? formatDate(sauda.bill_date) : "—"}</td>
+                      <td rowSpan={span}>{billNos(sauda)}</td>
+                      <td rowSpan={span}>{billDates(sauda)}</td>
                       <td rowSpan={span}>{sauda.destination || "—"}</td>
                       <td rowSpan={span}>{sauda.buyer_name}</td>
                     </>

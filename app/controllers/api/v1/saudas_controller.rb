@@ -17,7 +17,7 @@ module Api
       def index
         scope = Sauda.all
         scope = scope.where(seller_id: params[:seller_id]) if params[:seller_id].present?
-        scope = scope.includes(:seller, :buyer, sauda_marks: %i[mark sauda_grades]).ordered
+        scope = scope.includes(:seller, :buyer, :sauda_bills, sauda_marks: %i[mark sauda_grades]).ordered
 
         respond_to do |format|
           format.json { render json: scope.map { |sauda| serialize(sauda) } }
@@ -60,7 +60,7 @@ module Api
       end
 
       def update
-        if @sauda.update(replacing_marks(sauda_params))
+        if @sauda.update(replacing_bills(replacing_marks(sauda_params)))
           render json: serialize(@sauda)
         else
           render json: { errors: @sauda.errors.messages }, status: :unprocessable_content
@@ -96,7 +96,7 @@ module Api
       end
 
       def set_sauda
-        @sauda = Sauda.includes(:buyer, sauda_marks: %i[mark sauda_grades]).find(params[:id])
+        @sauda = Sauda.includes(:buyer, :sauda_bills, sauda_marks: %i[mark sauda_grades]).find(params[:id])
       rescue ActiveRecord::RecordNotFound
         render json: { errors: { base: ["Sauda not found"] } }, status: :not_found
       end
@@ -113,26 +113,38 @@ module Api
         attributes.merge(sauda_marks_attributes: dropped + attributes[:sauda_marks_attributes])
       end
 
+      # Mirrors replacing_marks: the form sends its bills whole every time, so
+      # the ones on record are dropped and written again rather than matched up
+      # row by row.
+      def replacing_bills(attributes)
+        return attributes unless attributes.key?(:sauda_bills_attributes)
+
+        dropped = @sauda.sauda_bill_ids.map { |id| { id: id, _destroy: true } }
+        attributes.merge(sauda_bills_attributes: dropped + attributes[:sauda_bills_attributes])
+      end
+
       def sauda_params
         # amount and the four figures worked out from it are deliberately absent:
         # the model prices the grades at their rates and takes the bill from
         # there, so accepting them would only invite a bill that disagrees with
         # the kilos underneath it. discount_percent is the one figure entered.
         params.require(:sauda).permit(
-          :company_id, :seller_id, :buyer_id, :sauda_no, :sauda_date, :bill_date,
-          :tax_invoice_no, :destination, :discount_percent, :credit_due,
-          :transporter_name, :bilty_no, :bilty_date,
+          :company_id, :seller_id, :buyer_id, :sauda_no, :sauda_date,
+          :destination, :discount_percent, :credit_due, :transporter_name,
           sauda_marks_attributes: [
             :id, :mark_id, :lot_nos, :_destroy,
             { sauda_grades_attributes: %i[id grade bags weight rate _destroy] }
+          ],
+          sauda_bills_attributes: [
+            :id, :bill_no, :bill_date, :bilty_no, :bilty_date, :lot_nos, :_destroy
           ]
         )
       end
 
       def serialize(sauda)
         sauda.as_json(
-          only: %i[id company_id seller_id buyer_id sauda_no sauda_date bill_date
-                   tax_invoice_no destination transporter_name bilty_no bilty_date
+          only: %i[id company_id seller_id buyer_id sauda_no sauda_date
+                   destination transporter_name
                    amount discount_percent credit_due total_tax_bill_amt gst_amt disc_amt
                    taxable_value brokerage_amt total_kg created_at]
         ).merge(
@@ -143,7 +155,8 @@ module Api
           # Worked out here rather than in the browser, so the rule for where
           # April falls lives in one place.
           "financial_year" => sauda.financial_year,
-          "sauda_marks" => sauda.sauda_marks.map { |sauda_mark| serialize_mark(sauda_mark) }
+          "sauda_marks" => sauda.sauda_marks.map { |sauda_mark| serialize_mark(sauda_mark) },
+          "sauda_bills" => sauda.sauda_bills.map { |sauda_bill| serialize_bill(sauda_bill) }
         )
       end
 
@@ -161,6 +174,10 @@ module Api
                  .merge("total_kg" => grade.total_kg, "amount" => grade.amount)
           end
         }
+      end
+
+      def serialize_bill(sauda_bill)
+        sauda_bill.as_json(only: %i[id bill_no bill_date bilty_no bilty_date lot_nos])
       end
     end
   end

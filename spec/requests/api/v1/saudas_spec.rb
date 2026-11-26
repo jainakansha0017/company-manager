@@ -44,10 +44,10 @@ RSpec.describe "Api::V1 saudas" do
       get "/api/v1/saudas", params: { company_id: company.id, seller_id: seller.id }
 
       expect(json.first.keys).to match_array(
-        %w[id company_id seller_id buyer_id buyer_name seller_name sauda_no sauda_date bill_date
-           tax_invoice_no destination transporter_name bilty_no bilty_date
+        %w[id company_id seller_id buyer_id buyer_name seller_name sauda_no sauda_date
+           destination transporter_name
            amount discount_percent credit_due total_tax_bill_amt gst_amt disc_amt taxable_value
-           brokerage_amt total_kg created_at financial_year sauda_marks]
+           brokerage_amt total_kg created_at financial_year sauda_marks sauda_bills]
       )
     end
 
@@ -150,12 +150,8 @@ RSpec.describe "Api::V1 saudas" do
           buyer_id: buyer.id,
           sauda_no: "S-2026-042",
           sauda_date: "2026-09-21",
-          bill_date: "2026-09-23",
-          tax_invoice_no: "TI-2026-118",
           destination: "Siliguri",
           transporter_name: "Sri Ganesh Roadways",
-          bilty_no: "BL-9921",
-          bilty_date: "2026-09-24",
           discount_percent: "2.5",
           credit_due: "500.00",
           sauda_marks_attributes: [
@@ -167,6 +163,14 @@ RSpec.describe "Api::V1 saudas" do
                 { grade: "PD", bags: 10, weight: "25.5", rate: "200.00" },
                 { grade: "BOP", bags: 4, weight: "50.0", rate: "245.00" }
               ]
+            }
+          ],
+          sauda_bills_attributes: [
+            {
+              bill_no: "TI-2026-118",
+              bill_date: "2026-09-23",
+              bilty_no: "BL-9921",
+              bilty_date: "2026-09-24"
             }
           ]
         }
@@ -180,7 +184,7 @@ RSpec.describe "Api::V1 saudas" do
         .and change(SaudaGrade, :count).by(2)
 
       expect(response).to have_http_status(:created)
-      expect(json["tax_invoice_no"]).to eq("TI-2026-118")
+      expect(json["sauda_bills"].first["bill_no"]).to eq("TI-2026-118")
       expect(json["buyer_name"]).to eq(buyer.name)
       expect(json["credit_due"].to_f).to eq(500.0)
     end
@@ -198,8 +202,8 @@ RSpec.describe "Api::V1 saudas" do
       post "/api/v1/saudas", params: valid_params
 
       expect(json["transporter_name"]).to eq("Sri Ganesh Roadways")
-      expect(json["bilty_no"]).to eq("BL-9921")
-      expect(json["bilty_date"]).to eq("2026-09-24")
+      expect(json["sauda_bills"].first["bilty_no"]).to eq("BL-9921")
+      expect(json["sauda_bills"].first["bilty_date"]).to eq("2026-09-24")
     end
 
     it "counts the bags on each mark" do
@@ -307,11 +311,22 @@ RSpec.describe "Api::V1 saudas" do
 
     it "updates the sauda's own fields" do
       patch "/api/v1/saudas/#{sauda.id}",
-            params: { sauda: { destination: "Guwahati", tax_invoice_no: "TI-2026-900" } }
+            params: { sauda: { destination: "Guwahati" } }
 
       expect(response).to have_http_status(:ok)
       expect(sauda.reload.destination).to eq("Guwahati")
-      expect(sauda.tax_invoice_no).to eq("TI-2026-900")
+    end
+
+    # The form posts the bills whole too, so what comes back is what was sent.
+    it "replaces the bills rather than adding to them" do
+      patch "/api/v1/saudas/#{sauda.id}", params: {
+        sauda: { sauda_bills_attributes: [{ bill_no: "TI-2026-900" }] }
+      }
+
+      expect(response).to have_http_status(:ok)
+      expect(json["sauda_bills"].length).to eq(1)
+      expect(json["sauda_bills"].first["bill_no"]).to eq("TI-2026-900")
+      expect(sauda.reload.sauda_bills.count).to eq(1)
     end
 
     # The form posts the marks whole, so what comes back is what was sent, not

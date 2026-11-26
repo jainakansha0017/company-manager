@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_24_072426) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_26_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -73,6 +73,18 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_24_072426) do
     t.index ["type", "pan"], name: "index_parties_on_type_and_pan", unique: true
   end
 
+  create_table "sauda_bills", force: :cascade do |t|
+    t.bigint "sauda_id", null: false
+    t.string "bill_no"
+    t.date "bill_date"
+    t.string "bilty_no"
+    t.date "bilty_date"
+    t.string "lot_nos"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["sauda_id"], name: "index_sauda_bills_on_sauda_id"
+  end
+
   create_table "sauda_grades", force: :cascade do |t|
     t.bigint "sauda_mark_id", null: false
     t.string "grade", null: false
@@ -99,7 +111,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_24_072426) do
     t.bigint "seller_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "tax_invoice_no"
     t.date "sauda_date", null: false
     t.string "destination"
     t.decimal "total_tax_bill_amt", precision: 12, scale: 2
@@ -109,12 +120,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_24_072426) do
     t.decimal "total_kg", precision: 12, scale: 3, default: "0.0", null: false
     t.bigint "buyer_id"
     t.string "sauda_no"
-    t.date "bill_date"
     t.decimal "amount", precision: 12, scale: 2
     t.decimal "discount_percent", precision: 5, scale: 2
     t.string "transporter_name"
-    t.string "bilty_no"
-    t.date "bilty_date"
     t.decimal "brokerage_amt", precision: 12, scale: 2
     t.decimal "credit_due", precision: 12, scale: 2
     t.index "lower((sauda_no)::text)", name: "index_saudas_on_lower_sauda_no_uniq", unique: true, where: "((sauda_no)::text <> ''::text)"
@@ -138,6 +146,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_24_072426) do
   end
 
   add_foreign_key "marks", "parties", column: "seller_id"
+  add_foreign_key "sauda_bills", "saudas"
   add_foreign_key "sauda_grades", "sauda_marks"
   add_foreign_key "sauda_marks", "marks"
   add_foreign_key "sauda_marks", "saudas"

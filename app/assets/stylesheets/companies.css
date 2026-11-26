@@ -1029,6 +1029,59 @@ legend {
   font-variant-numeric: tabular-nums;
 }
 
+/* One bill on the sauda form, styled like .sauda-mark since it is the same
+   kind of repeating block. */
+.sauda-bill {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.sauda-bill__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.sauda-bill__header h3 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.field--checkbox {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+
+.field--checkbox input {
+  width: auto;
+}
+
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 6px;
+}
+
+.checkbox-group__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 400;
+}
+
+.checkbox-group__item input {
+  width: auto;
+}
+
 .field__hint {
   margin: 5px 0 0;
   font-size: 12px;

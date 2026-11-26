@@ -11,14 +11,14 @@ FactoryBot.define do
     buyer
     sequence(:sauda_no) { |n| "S-#{format('%04d', n)}" }
     sauda_date { Date.current }
-    bill_date { Date.current }
-    sequence(:tax_invoice_no) { |n| "TI-#{format('%04d', n)}" }
     destination { "Kolkata" }
 
     after(:build) do |sauda, evaluator|
       evaluator.mark_count.times do
         sauda.sauda_marks << build(:sauda_mark, sauda: sauda, mark: build(:mark, seller: sauda.seller))
       end
+      # The one bill a sauda has until a test (or the form) splits it into more.
+      sauda.sauda_bills << build(:sauda_bill, sauda: sauda) if sauda.sauda_bills.empty?
     end
   end
 
@@ -49,5 +49,11 @@ FactoryBot.define do
     sequence(:grade) { |n| "PD#{n}" }
     bags { 10 }
     weight { "25.5" }
+  end
+
+  factory :sauda_bill do
+    sauda
+    bill_date { Date.current }
+    sequence(:bill_no) { |n| "TI-#{format('%04d', n)}" }
   end
 end
