@@ -258,6 +258,7 @@ export default function SaudaRegister({
           saudas={visible}
           loading={loadingSaudas}
           sellerName={isAll ? null : selected.name}
+          showSaudaNo={isAll}
           onView={setViewingSauda}
           onEdit={editSauda}
           onDelete={removeSauda}

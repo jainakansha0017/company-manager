@@ -33,6 +33,7 @@ export default function SaudaList({
   saudas,
   loading,
   sellerName,
+  showSaudaNo = false,
   onView,
   onEdit,
   onDelete,
@@ -48,6 +49,10 @@ export default function SaudaList({
       </p>
     );
   }
+
+  // The Sauda band gains a leading Sauda no. column only in the "All"
+  // register, where a row's own number is what ties it back to one seller.
+  const saudaColumns = showSaudaNo ? 6 : 5;
 
   return (
     <>
@@ -73,6 +78,7 @@ export default function SaudaList({
               the bands, whose cells each span five. The widths live here instead,
               in companies.css against `col`. */}
           <colgroup>
+            {showSaudaNo && <col className="col-sauda-no" />}
             <col className="col-date" />
             <col className="col-invoice" />
             <col className="col-bill-date" />
@@ -95,7 +101,7 @@ export default function SaudaList({
               because the band above it says which of the three it belongs to. */}
           <thead>
             <tr className="table__bands">
-              <th colSpan={5}>Sauda</th>
+              <th colSpan={saudaColumns}>Sauda</th>
               <th colSpan={5} className="col--band-start">
                 Mark
               </th>
@@ -105,6 +111,7 @@ export default function SaudaList({
               <th className="col--band-start" aria-label="Actions" />
             </tr>
             <tr>
+              {showSaudaNo && <th>Sauda no.</th>}
               <th>Date</th>
               <th>Tax invoice no.</th>
               <th>Bill date</th>
@@ -143,6 +150,7 @@ export default function SaudaList({
                 >
                   {index === 0 && (
                     <>
+                      {showSaudaNo && <td rowSpan={span}>{sauda.sauda_no || "—"}</td>}
                       <td rowSpan={span}>{formatDate(sauda.sauda_date)}</td>
                       <td rowSpan={span}>{sauda.tax_invoice_no || "—"}</td>
                       <td rowSpan={span}>{sauda.bill_date ? formatDate(sauda.bill_date) : "—"}</td>

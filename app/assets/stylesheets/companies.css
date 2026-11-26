@@ -870,6 +870,7 @@ legend {
 /* Shares add up to around 100, allotted by what each column has to fit: a
    lakh figure needs the room, a bag count does not, and words can always
    wrap. */
+.table.table--register col.col-sauda-no { width: 6%; }    /* Sauda no. (All register only) */
 .table.table--register col.col-date { width: 7%; }        /* Date */
 .table.table--register col.col-invoice { width: 6%; }     /* Tax invoice no. */
 .table.table--register col.col-bill-date { width: 6%; }   /* Bill date */
